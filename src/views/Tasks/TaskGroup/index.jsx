@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import dotProp from 'dot-prop-immutable';
 import { lowerCase } from 'change-case';
@@ -15,6 +15,7 @@ import SpeedDialAction from '../../../components/SpeedDialAction';
 import Dashboard from '../../../components/Dashboard';
 import Search from '../../../components/Search';
 import DialogAction from '../../../components/DialogAction';
+import HelpView from '../../../components/HelpView';
 import TaskGroupProgress from '../../../components/TaskGroupProgress';
 import TaskGroupTable from '../../../components/TaskGroupTable';
 import TaskActionForm from '../../../components/TaskActionForm';
@@ -23,8 +24,10 @@ import {
   TASK_GROUP_POLLING_INTERVAL,
   VALID_TASK,
   ACTIONS_JSON_KNOWN_KINDS,
+  TASK_GROUP_PROGRESS_SIZE,
 } from '../../../utils/constants';
 import taskGroupQuery from './taskGroup.graphql';
+import taskGroupCompactQuery from './taskGroupCompact.graphql';
 import db from '../../../utils/db';
 import submitTaskAction from '../submitTaskAction';
 
@@ -38,7 +41,21 @@ const updateTaskGroupIdHistory = id => {
 
 @hot(module)
 @withApollo
+@withStyles(theme => ({
+  code: {
+    maxHeight: '70vh',
+    margin: 0,
+  },
+  codeEditor: {
+    overflow: 'auto',
+    maxHeight: '70vh',
+  },
+  description: {
+    marginBottom: theme.spacing.triple,
+  },
+}))
 @graphql(taskGroupQuery, {
+  name: 'taskGroup',
   options: props => ({
     pollInterval: TASK_GROUP_POLLING_INTERVAL,
     variables: {
@@ -57,38 +74,22 @@ const updateTaskGroupIdHistory = id => {
     },
   }),
 })
-@withStyles(theme => ({
-  code: {
-    maxHeight: '70vh',
-    margin: 0,
-  },
-  codeEditor: {
-    overflow: 'auto',
-    maxHeight: '70vh',
-  },
-  description: {
-    marginBottom: theme.spacing.triple,
-  },
-}))
+@graphql(taskGroupCompactQuery, {
+  name: 'taskGroupCompact',
+  options: props => ({
+    pollInterval: TASK_GROUP_POLLING_INTERVAL,
+    variables: {
+      taskGroupId: props.match.params.taskGroupId,
+      taskGroupCompactConnection: {
+        limit: TASK_GROUP_PROGRESS_SIZE,
+      },
+    },
+  }),
+})
 export default class TaskGroup extends Component {
-  state = {
-    taskGroupSearch: '',
-    filter: null,
-    taskGroupProgressDisabled: false,
-    // eslint-disable-next-line react/no-unused-state
-    previousTaskGroupId: null,
-    groupActions: [],
-    actionLoading: false,
-    actionInputs: {},
-    actionData: {},
-    dialogOpen: false,
-    selectedAction: null,
-    dialogError: null,
-  };
-
   static getDerivedStateFromProps(props, state) {
     const taskGroupId = props.match.params.taskGroupId || '';
-    const { taskActions } = props.data;
+    const { taskActions } = props.taskGroup;
     const groupActions = [];
     const actionInputs = state.actionInputs || {};
     const actionData = state.actionData || {};
@@ -127,6 +128,21 @@ export default class TaskGroup extends Component {
     return null;
   }
 
+  state = {
+    taskGroupSearch: '',
+    filter: null,
+    taskGroupProgressDisabled: false,
+    // eslint-disable-next-line react/no-unused-state
+    previousTaskGroupId: null,
+    groupActions: [],
+    actionLoading: false,
+    actionInputs: {},
+    actionData: {},
+    dialogOpen: false,
+    selectedAction: null,
+    dialogError: null,
+  };
+
   componentDidUpdate(prevProps) {
     const { taskGroupId } = this.props.match.params;
 
@@ -135,28 +151,71 @@ export default class TaskGroup extends Component {
     }
   }
 
-  handleTaskGroupSearchChange = ({ target: { value } }) => {
-    this.setState({ taskGroupSearch: value || '' });
+  handleActionClick = ({ target: { name } }) => {
+    const { action } = this.state.actionData[name];
+
+    this.setState({ dialogOpen: true, selectedAction: action });
   };
 
-  handleTaskGroupSearchSubmit = e => {
-    e.preventDefault();
-
-    const { taskGroupSearch } = this.state;
-
-    if (this.props.match.params.taskGroupId !== taskGroupSearch) {
-      this.props.history.push(`/tasks/groups/${this.state.taskGroupSearch}`);
-    }
-
-    this.setState({ taskGroupProgressDisabled: true });
+  handleActionComplete = taskId => {
+    this.handleActionDialogClose();
+    this.handleActionTaskComplete(taskId);
   };
+
+  handleActionDialogClose = () => {
+    this.setState({
+      dialogOpen: false,
+      selectedAction: null,
+      dialogError: null,
+      actionLoading: false,
+    });
+  };
+
+  handleActionError = e => {
+    this.setState({ dialogError: e, actionLoading: false });
+  };
+
+  handleActionSubmit = ({ name }) => async () => {
+    this.preRunningAction();
+
+    const { taskActions, task } = this.props.taskGroup;
+    const { actionInputs, actionData } = this.state;
+    const form = actionInputs[name];
+    const { action } = actionData[name];
+    const taskId = await submitTaskAction({
+      task,
+      taskActions,
+      form,
+      action,
+      apolloClient: this.props.client,
+    });
+
+    return taskId;
+  };
+
+  handleActionTaskComplete = taskId => {
+    this.props.history.push(`/tasks/${taskId}`);
+  };
+
+  handleCountUpdate = () => {
+    this.setState({ taskGroupProgressDisabled: false });
+  };
+
+  handleFormChange = (value, name) =>
+    this.setState({
+      actionInputs: {
+        // eslint-disable-next-line react/no-access-state-in-setstate
+        ...this.state.actionInputs,
+        [name]: value,
+      },
+    });
 
   handlePageChange = ({ cursor, previousCursor }) => {
     const {
       match: {
         params: { taskGroupId },
       },
-      data: { fetchMore },
+      taskGroup: { fetchMore },
     } = this.props;
     const { filter } = this.state;
 
@@ -197,13 +256,9 @@ export default class TaskGroup extends Component {
     });
   };
 
-  handleCountUpdate = () => {
-    this.setState({ taskGroupProgressDisabled: false });
-  };
-
   handleStatusClick = async ({ target: { name } }) => {
     const {
-      data: { refetch },
+      taskGroup: { refetch },
       match: {
         params: { taskGroupId },
       },
@@ -211,6 +266,7 @@ export default class TaskGroup extends Component {
     const filter = this.state.filter === name ? null : name;
 
     this.setState({ taskGroupProgressDisabled: true });
+
     await refetch({
       taskGroupId,
       taskGroupConnection: {
@@ -230,62 +286,25 @@ export default class TaskGroup extends Component {
     this.setState({ taskGroupProgressDisabled: false, filter });
   };
 
-  handleFormChange = (value, name) =>
-    this.setState({
-      actionInputs: {
-        ...this.state.actionInputs,
-        [name]: value,
-      },
-    });
-
-  handleActionClick = ({ target: { name } }) => {
-    const { action } = this.state.actionData[name];
-
-    this.setState({ dialogOpen: true, selectedAction: action });
+  handleTaskGroupSearchChange = ({ target: { value } }) => {
+    this.setState({ taskGroupSearch: value || '' });
   };
 
-  handleActionDialogClose = () => {
-    this.setState({
-      dialogOpen: false,
-      selectedAction: null,
-      dialogError: null,
-      actionLoading: false,
-    });
-  };
+  handleTaskGroupSearchSubmit = e => {
+    e.preventDefault();
 
-  handleActionTaskComplete = taskId => {
-    this.props.history.push(`/tasks/${taskId}`);
+    const { taskGroupSearch } = this.state;
+
+    if (this.props.match.params.taskGroupId === taskGroupSearch) {
+      return;
+    }
+
+    this.setState({ taskGroupProgressDisabled: true });
+    this.props.history.push(`/tasks/groups/${this.state.taskGroupSearch}`);
   };
 
   preRunningAction = () => {
     this.setState({ dialogError: null, actionLoading: true });
-  };
-
-  handleActionSubmit = ({ name }) => async () => {
-    this.preRunningAction();
-
-    const { taskActions, task } = this.props.data;
-    const { actionInputs, actionData } = this.state;
-    const form = actionInputs[name];
-    const { action } = actionData[name];
-    const taskId = await submitTaskAction({
-      task,
-      taskActions,
-      form,
-      action,
-      apolloClient: this.props.client,
-    });
-
-    return taskId;
-  };
-
-  handleActionError = e => {
-    this.setState({ dialogError: e, actionLoading: false });
-  };
-
-  handleActionComplete = taskId => {
-    this.handleActionDialogClose();
-    this.handleActionTaskComplete(taskId);
   };
 
   render() {
@@ -301,38 +320,50 @@ export default class TaskGroup extends Component {
       dialogError,
     } = this.state;
     const {
+      description,
       match: {
         params: { taskGroupId },
       },
-      data: { loading, error, taskGroup },
+      taskGroup,
+      taskGroupCompact,
     } = this.props;
+    const error = taskGroup.error || taskGroupCompact.error;
 
     return (
       <Dashboard
+        helpView={<HelpView description={description} />}
         search={
           <Search
             value={taskGroupSearch}
             onChange={this.handleTaskGroupSearchChange}
             onSubmit={this.handleTaskGroupSearchSubmit}
           />
-        }>
+        }
+      >
         {error &&
           error.graphQLErrors && (
             <ErrorPanel error={error.graphQLErrors[0].message} />
           )}
-        <TaskGroupProgress
-          taskGroupId={taskGroupId}
-          disabled={taskGroupProgressDisabled}
-          filter={filter}
-          onStatusClick={this.handleStatusClick}
-          onCountUpdate={this.handleCountUpdate}
-        />
+        {!error && (
+          <TaskGroupProgress
+            // eslint-disable-next-line react/jsx-handler-names
+            onFetchMore={taskGroupCompact.fetchMore}
+            // eslint-disable-next-line react/jsx-handler-names
+            onRefetch={taskGroupCompact.refetch}
+            taskGroup={taskGroupCompact.taskGroup}
+            taskGroupId={taskGroupId}
+            disabled={taskGroupProgressDisabled}
+            filter={filter}
+            onStatusClick={this.handleStatusClick}
+            onCountUpdate={this.handleCountUpdate}
+          />
+        )}
         <br />
-        {loading && <Spinner loading />}
-        {taskGroup && (
+        {taskGroup.loading && <Spinner loading />}
+        {taskGroup.taskGroup && (
           <TaskGroupTable
             onPageChange={this.handlePageChange}
-            taskGroupConnection={taskGroup}
+            taskGroupConnection={taskGroup.taskGroup}
           />
         )}
         {groupActions && groupActions.length ? (

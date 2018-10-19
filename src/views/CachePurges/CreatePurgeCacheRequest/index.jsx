@@ -1,5 +1,7 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
+import { withApollo } from 'react-apollo';
+import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -8,8 +10,10 @@ import Tooltip from '@material-ui/core/Tooltip';
 import PlusIcon from 'mdi-react/PlusIcon';
 import Dashboard from '../../../components/Dashboard';
 import Button from '../../../components/Button';
+import purgeCacheQuery from './purgeCache.graphql';
 
 @hot(module)
+@withApollo
 @withStyles(theme => ({
   plusButton: {
     ...theme.mixins.fab,
@@ -23,6 +27,31 @@ export default class CreatePurgeCacheRequest extends Component {
     provisionerId: '',
     workerType: '',
     cacheName: '',
+    error: null,
+    actionLoading: false,
+  };
+
+  handleCreate = async () => {
+    const { provisionerId, workerType, cacheName } = this.state;
+
+    this.setState({ error: null, actionLoading: true });
+
+    try {
+      await this.props.client.mutate({
+        mutation: purgeCacheQuery,
+        variables: {
+          provisionerId,
+          workerType,
+          payload: { cacheName },
+        },
+      });
+
+      this.setState({ error: null, actionLoading: false });
+
+      this.props.history.push('/purge-caches');
+    } catch (error) {
+      this.setState({ error, actionLoading: false });
+    }
   };
 
   handleInputChange = ({ target: { name, value } }) => {
@@ -35,16 +64,20 @@ export default class CreatePurgeCacheRequest extends Component {
     return provisionerId && workerType && cacheName;
   };
 
-  // TODO: Add action request
-  handleCreate() {}
-
   render() {
     const { classes } = this.props;
-    const { provisionerId, workerType, cacheName } = this.state;
+    const {
+      error,
+      provisionerId,
+      workerType,
+      cacheName,
+      actionLoading,
+    } = this.state;
 
     return (
       <Dashboard title="Create Purge Cache Request">
         <Fragment>
+          {error && <ErrorPanel error={error} />}
           <List>
             <ListItem>
               <TextField
@@ -77,14 +110,16 @@ export default class CreatePurgeCacheRequest extends Component {
           <Tooltip
             enterDelay={300}
             id="create-purge-cache-request-tooltip"
-            title="Create Request">
+            title="Create Request"
+          >
             <Button
               requiresAuth
-              disabled={!this.isFormFilled()}
+              disabled={!this.isFormFilled() || actionLoading}
               onClick={this.handleCreate}
               variant="fab"
               classes={{ root: classes.plusIcon }}
-              className={classes.plusButton}>
+              className={classes.plusButton}
+            >
               <PlusIcon />
             </Button>
           </Tooltip>

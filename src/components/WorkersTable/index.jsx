@@ -1,8 +1,10 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { func, string } from 'prop-types';
 import { formatDistanceStrict } from 'date-fns';
-import { memoizeWith, pipe, filter, map, sort as rSort } from 'ramda';
+import { pipe, filter, map, sort as rSort } from 'ramda';
+import memoize from 'fast-memoize';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ListItemText from '@material-ui/core/ListItemText';
 import Typography from '@material-ui/core/Typography';
 import TableCell from '@material-ui/core/TableCell';
@@ -50,12 +52,7 @@ export default class WorkersTable extends Component {
     sortDirection: null,
   };
 
-  createSortedWorkersConnection = memoizeWith(
-    (workersConnections, sortBy, sortDirection) => {
-      const ids = sorted(workersConnections.edges);
-
-      return `${ids.join('-')}-${sortBy}-${sortDirection}`;
-    },
+  createSortedWorkersConnection = memoize(
     (workersConnection, sortBy, sortDirection) => {
       const filteredEdges = workersConnection.edges.filter(
         worker => worker.node.latestTask
@@ -83,8 +80,23 @@ export default class WorkersTable extends Component {
           return sort(firstElement, secondElement);
         }),
       };
+    },
+    {
+      serializer: ([workersConnections, sortBy, sortDirection]) => {
+        const ids = sorted(workersConnections.edges);
+
+        return `${ids.join('-')}-${sortBy}-${sortDirection}`;
+      },
     }
   );
+
+  handleHeaderClick = sortByHeader => {
+    const sortBy = sortByHeader;
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
 
   valueFromNode(node) {
     const mapping = {
@@ -100,14 +112,6 @@ export default class WorkersTable extends Component {
 
     return mapping[this.state.sortBy];
   }
-
-  handleHeaderClick = sortByHeader => {
-    const sortBy = sortByHeader;
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
 
   render() {
     const { sortBy, sortDirection } = this.state;
@@ -137,7 +141,8 @@ export default class WorkersTable extends Component {
           <TableRow
             key={`${latestTask.run.workerId}-${latestTask.run.runId}-${
               latestTask.run.taskId
-            }`}>
+            }`}
+          >
             <TableCell>{latestTask.run.workerGroup}</TableCell>
             <TableCell>
               <TableCellListItem
@@ -145,14 +150,11 @@ export default class WorkersTable extends Component {
                 component={Link}
                 to={`/provisioners/${provisionerId}/worker-types/${workerType}/workers/${
                   latestTask.run.workerGroup
-                }/${latestTask.run.workerId}`}>
+                }/${latestTask.run.workerId}`}
+              >
                 <ListItemText
                   disableTypography
-                  primary={
-                    <Typography variant="body1">
-                      {latestTask.run.workerId}
-                    </Typography>
-                  }
+                  primary={<Typography>{latestTask.run.workerId}</Typography>}
                 />
                 <LinkIcon size={iconSize} />
               </TableCellListItem>
@@ -163,14 +165,11 @@ export default class WorkersTable extends Component {
                 component={Link}
                 to={`/tasks/${latestTask.run.taskId}/runs/${
                   latestTask.run.runId
-                }`}>
+                }`}
+              >
                 <ListItemText
                   disableTypography
-                  primary={
-                    <Typography variant="body1">
-                      {latestTask.run.taskId}
-                    </Typography>
-                  }
+                  primary={<Typography>{latestTask.run.taskId}</Typography>}
                 />
                 <LinkIcon size={iconSize} />
               </TableCellListItem>
@@ -178,49 +177,55 @@ export default class WorkersTable extends Component {
             <TableCell>
               {<StatusLabel state={latestTask.run.state} />}
             </TableCell>
-            <TableCell>
-              <TableCellListItem button>
-                <ListItemText
-                  disableTypography
-                  primary={
-                    <Typography variant="body1">
-                      <DateDistance from={latestTask.run.started} />
-                    </Typography>
-                  }
-                />
-                <ContentCopyIcon size={iconSize} />
-              </TableCellListItem>
-            </TableCell>
-            <TableCell>
-              {latestTask.run.resolved ? (
+            <CopyToClipboard text={latestTask.run.started}>
+              <TableCell>
                 <TableCellListItem button>
                   <ListItemText
                     disableTypography
                     primary={
-                      <Typography variant="body1">
-                        <DateDistance from={latestTask.run.resolved} />
+                      <Typography>
+                        <DateDistance from={latestTask.run.started} />
                       </Typography>
                     }
                   />
                   <ContentCopyIcon size={iconSize} />
                 </TableCellListItem>
-              ) : (
-                <Typography variant="body1">n/a</Typography>
-              )}
-            </TableCell>
-            <TableCell>
-              <TableCellListItem button>
-                <ListItemText
-                  disableTypography
-                  primary={
-                    <Typography variant="body1">
-                      <DateDistance from={firstClaim} />
-                    </Typography>
-                  }
-                />
-                <ContentCopyIcon size={iconSize} />
-              </TableCellListItem>
-            </TableCell>
+              </TableCell>
+            </CopyToClipboard>
+            <CopyToClipboard text={latestTask.run.resolved}>
+              <TableCell>
+                {latestTask.run.resolved ? (
+                  <TableCellListItem button>
+                    <ListItemText
+                      disableTypography
+                      primary={
+                        <Typography>
+                          <DateDistance from={latestTask.run.resolved} />
+                        </Typography>
+                      }
+                    />
+                    <ContentCopyIcon size={iconSize} />
+                  </TableCellListItem>
+                ) : (
+                  <Typography>n/a</Typography>
+                )}
+              </TableCell>
+            </CopyToClipboard>
+            <CopyToClipboard text={firstClaim}>
+              <TableCell>
+                <TableCellListItem button>
+                  <ListItemText
+                    disableTypography
+                    primary={
+                      <Typography>
+                        <DateDistance from={firstClaim} />
+                      </Typography>
+                    }
+                  />
+                  <ContentCopyIcon size={iconSize} />
+                </TableCellListItem>
+              </TableCell>
+            </CopyToClipboard>
             <TableCell>
               {quarantineUntil
                 ? formatDistanceStrict(new Date(), quarantineUntil, {

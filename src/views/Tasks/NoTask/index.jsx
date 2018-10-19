@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -9,6 +9,7 @@ import LinkIcon from 'mdi-react/LinkIcon';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 import Dashboard from '../../../components/Dashboard';
+import HelpView from '../../../components/HelpView';
 import Search from '../../../components/Search';
 import db from '../../../utils/db';
 
@@ -43,18 +44,20 @@ export default class NoTask extends Component {
   };
 
   render() {
-    const { classes } = this.props;
+    const { description, classes } = this.props;
     const { taskSearch, recentTasks } = this.state;
 
     return (
       <Dashboard
+        helpView={<HelpView description={description} />}
         search={
           <Search
             value={taskSearch}
             onChange={this.handleTaskSearchChange}
             onSubmit={this.handleTaskSearchSubmit}
           />
-        }>
+        }
+      >
         <Typography className={classes.infoText}>
           Enter a task ID in the search box
         </Typography>
@@ -64,14 +67,16 @@ export default class NoTask extends Component {
               dense
               subheader={
                 <ListSubheader component="div">Recent Tasks</ListSubheader>
-              }>
+              }
+            >
               {recentTasks.map(({ taskId }) => (
                 <ListItem
                   button
                   className={classes.listItemButton}
                   component={Link}
                   to={`/tasks/${taskId}`}
-                  key={taskId}>
+                  key={taskId}
+                >
                   <ListItemText primary={taskId} />
                   <LinkIcon />
                 </ListItem>

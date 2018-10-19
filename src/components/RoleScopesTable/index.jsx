@@ -1,10 +1,9 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { arrayOf, string } from 'prop-types';
 import { Link, withRouter } from 'react-router-dom';
 import {
   uniq,
   flatten,
-  memoizeWith,
   filter,
   pipe,
   map,
@@ -15,6 +14,7 @@ import {
   pluck,
   sort as rSort,
 } from 'ramda';
+import memoize from 'fast-memoize';
 import { withStyles } from '@material-ui/core/styles';
 import ListItemText from '@material-ui/core/ListItemText';
 import TableRow from '@material-ui/core/TableRow';
@@ -38,6 +38,13 @@ const sorted = pipe(
   },
 })
 export default class RoleScopesTable extends Component {
+  static defaultProps = {
+    searchTerm: null,
+    selectedScope: null,
+    searchMode: null,
+    searchProperty: 'expandedScopes',
+  };
+
   static propTypes = {
     /** A GraphQL roles response. */
     roles: arrayOf(role).isRequired,
@@ -54,18 +61,7 @@ export default class RoleScopesTable extends Component {
     selectedScope: string,
   };
 
-  static defaultProps = {
-    searchTerm: null,
-    selectedScope: null,
-    searchMode: null,
-    searchProperty: 'expandedScopes',
-  };
-
-  createSortedRolesScopes = memoizeWith(
-    (roles, searchMode, selectedScope, searchProperty) =>
-      `${sorted(roles).join(
-        '-'
-      )}-${searchMode}-${selectedScope}-${searchProperty}`,
+  createSortedRolesScopes = memoize(
     (roles, searchMode, selectedScope, searchProperty) => {
       const match = scopeMatch(searchMode, selectedScope);
       const extractExpandedScopes = pipe(
@@ -87,6 +83,12 @@ export default class RoleScopesTable extends Component {
       );
 
       return selectedScope ? extractRoles(roles) : extractExpandedScopes(roles);
+    },
+    {
+      serializer: ([roles, searchMode, selectedScope, searchProperty]) =>
+        `${sorted(roles).join(
+          '-'
+        )}-${searchMode}-${selectedScope}-${searchProperty}`,
     }
   );
 
@@ -105,7 +107,8 @@ export default class RoleScopesTable extends Component {
               selectedScope
                 ? `/auth/roles/${encodeURIComponent(node)}`
                 : `/auth/scopes/${encodeURIComponent(node)}`
-            }>
+            }
+          >
             <ListItemText disableTypography primary={<code>{node}</code>} />
             <LinkIcon size={iconSize} />
           </TableCellListItem>

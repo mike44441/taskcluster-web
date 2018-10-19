@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { arrayOf, func, shape } from 'prop-types';
 import { Link } from 'react-router-dom';
 import { pipe, map, sort as rSort } from 'ramda';
@@ -85,6 +85,13 @@ export default class TaskGroupTable extends Component {
     }
   );
 
+  handleHeaderClick = sortBy => {
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
+
   valueFromNode(node) {
     const mapping = {
       Status: node.status.state,
@@ -93,13 +100,6 @@ export default class TaskGroupTable extends Component {
 
     return mapping[this.state.sortBy];
   }
-
-  handleHeaderClick = sortBy => {
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
 
   render() {
     const { sortBy, sortDirection } = this.state;
@@ -122,13 +122,15 @@ export default class TaskGroupTable extends Component {
         onHeaderClick={this.handleHeaderClick}
         renderRow={({ node: taskGroup }) => (
           <TableRow
-            key={`task-group-${taskGroup.metadata.name}`}
-            className={classes.listItemButton}>
+            key={`task-group-${taskGroup.status.taskId}`}
+            className={classes.listItemButton}
+          >
             <TableCell>
               <TableCellListItem
                 button
                 component={Link}
-                to={`/tasks/${taskGroup.status.taskId}`}>
+                to={`/tasks/${taskGroup.status.taskId}`}
+              >
                 <div className={classes.taskGroupName}>
                   {taskGroup.metadata.name}
                 </div>

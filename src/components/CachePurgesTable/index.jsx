@@ -1,6 +1,7 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { func, shape, arrayOf } from 'prop-types';
-import { memoizeWith, pipe, map, sort as rSort } from 'ramda';
+import { pipe, map, sort as rSort } from 'ramda';
+import memoize from 'fast-memoize';
 import { camelCase } from 'change-case/change-case';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
@@ -34,19 +35,7 @@ export default class CachePurgesTable extends Component {
     sortDirection: null,
   };
 
-  handleHeaderClick = sortBy => {
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
-
-  createSortedCachePurgesConnection = memoizeWith(
-    (cachePurgesConnection, sortBy, sortDirection) => {
-      const ids = sorted(cachePurgesConnection.edges);
-
-      return `${ids.join('-')}-${sortBy}-${sortDirection}`;
-    },
+  createSortedCachePurgesConnection = memoize(
     (cachePurgesConnection, sortBy, sortDirection) => {
       const sortByProperty = camelCase(sortBy);
 
@@ -69,8 +58,22 @@ export default class CachePurgesTable extends Component {
           return sort(firstElement, secondElement);
         }),
       };
+    },
+    {
+      serializer: ([cachePurgesConnection, sortBy, sortDirection]) => {
+        const ids = sorted(cachePurgesConnection.edges);
+
+        return `${ids.join('-')}-${sortBy}-${sortDirection}`;
+      },
     }
   );
+
+  handleHeaderClick = sortBy => {
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
 
   render() {
     const { onPageChange, cachePurgesConnection } = this.props;

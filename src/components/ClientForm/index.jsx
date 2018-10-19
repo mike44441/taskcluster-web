@@ -1,4 +1,4 @@
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { bool, func } from 'prop-types';
 import { addYears } from 'date-fns';
@@ -20,6 +20,7 @@ import PowerIcon from 'mdi-react/PowerIcon';
 import LockResetIcon from 'mdi-react/LockResetIcon';
 import SpeedDial from '../SpeedDial';
 import SpeedDialAction from '../SpeedDialAction';
+import DateDistance from '../DateDistance';
 import DatePicker from '../DatePicker';
 import Button from '../Button';
 import { client } from '../../utils/prop-types';
@@ -54,23 +55,6 @@ import splitLines from '../../utils/splitLines';
 }))
 /** A form to view/edit/create a client */
 export default class ClientForm extends Component {
-  static propTypes = {
-    /** A GraphQL client response. Not needed when creating a new client  */
-    client,
-    /** Set to `true` when creating a new client. */
-    isNewClient: bool,
-    /** Callback function fired when a client is created/updated. */
-    onSaveClient: func.isRequired,
-    /** Callback function fired when a client is deleted. */
-    onDeleteClient: func,
-    /** Callback function fired when a client is disabled. */
-    onDisableClient: func,
-    /** Callback function fired when a client is enabled. */
-    onEnableClient: func,
-    /** If true, form actions will be disabled. */
-    loading: bool,
-  };
-
   static defaultProps = {
     isNewClient: false,
     client: null,
@@ -78,22 +62,7 @@ export default class ClientForm extends Component {
     onDeleteClient: null,
     onDisableClient: null,
     onEnableClient: null,
-  };
-
-  state = {
-    description: '',
-    scopeText: '',
-    clientId: '',
-    created: null,
-    lastModified: null,
-    lastDateUsed: null,
-    lastRotated: null,
-    expires: addYears(new Date(), 1000),
-    deleteOnExpiration: true,
-    expandedScopes: null,
-    disabled: null,
-    // eslint-disable-next-line react/no-unused-state
-    prevClient: null,
+    onResetAccessToken: null,
   };
 
   static getDerivedStateFromProps({ isNewClient, client }, state) {
@@ -117,8 +86,55 @@ export default class ClientForm extends Component {
     };
   }
 
-  handleInputChange = ({ target: { name, value } }) => {
-    this.setState({ [name]: value });
+  static propTypes = {
+    /** A GraphQL client response. Not needed when creating a new client  */
+    client,
+    /** Set to `true` when creating a new client. */
+    isNewClient: bool,
+    /** Callback function fired when a client is created/updated. */
+    onSaveClient: func.isRequired,
+    /** Callback function fired when a client is deleted. */
+    onDeleteClient: func,
+    /** Callback function fired when a client is disabled. */
+    onDisableClient: func,
+    /** Callback function fired when a client is enabled. */
+    onEnableClient: func,
+    /** Callback function fired when a client resets its access token. */
+    onResetAccessToken: func,
+    /** If true, form actions will be disabled. */
+    loading: bool,
+  };
+
+  state = {
+    description: '',
+    scopeText: '',
+    clientId: '',
+    created: null,
+    lastModified: null,
+    lastDateUsed: null,
+    lastRotated: null,
+    expires: addYears(new Date(), 1000),
+    deleteOnExpiration: true,
+    expandedScopes: null,
+    disabled: null,
+    // eslint-disable-next-line react/no-unused-state
+    prevClient: null,
+  };
+
+  handleDeleteClient = () => {
+    this.props.onDeleteClient(this.state.clientId);
+  };
+
+  handleDeleteOnExpirationChange = () => {
+    this.setState({ deleteOnExpiration: !this.state.deleteOnExpiration });
+  };
+
+  handleDisableClient = () => {
+    this.props.onDisableClient(this.state.clientId);
+  };
+
+  handleEnableClient = () => {
+    this.props.onEnableClient(this.state.clientId);
   };
 
   handleExpirationChange = expires => {
@@ -127,12 +143,13 @@ export default class ClientForm extends Component {
     });
   };
 
-  handleDeleteOnExpirationChange = () => {
-    this.setState({ deleteOnExpiration: !this.state.deleteOnExpiration });
+  handleInputChange = ({ target: { name, value } }) => {
+    this.setState({ [name]: value });
   };
 
-  // TODO: Reset accessToken
-  handleResetAccessToken = () => {};
+  handleResetAccessToken = () => {
+    this.props.onResetAccessToken(this.state.clientId);
+  };
 
   handleSaveClient = () => {
     const {
@@ -151,18 +168,6 @@ export default class ClientForm extends Component {
     };
 
     this.props.onSaveClient(client, clientId);
-  };
-
-  handleDeleteClient = () => {
-    this.props.onDeleteClient(this.state.clientId);
-  };
-
-  handleDisableClient = () => {
-    this.props.onDisableClient(this.state.clientId);
-  };
-
-  handleEnableClient = () => {
-    this.props.onEnableClient(this.state.clientId);
   };
 
   render() {
@@ -214,24 +219,27 @@ export default class ClientForm extends Component {
                 <ListItemText primary="Client ID" secondary={clientId} />
               </ListItem>
               <ListItem>
-                <ListItemText primary="Date Created" secondary={created} />
+                <ListItemText
+                  primary="Date Created"
+                  secondary={<DateDistance from={created} />}
+                />
               </ListItem>
               <ListItem>
                 <ListItemText
                   primary="Date Last Modified"
-                  secondary={lastModified}
+                  secondary={<DateDistance from={lastModified} />}
                 />
               </ListItem>
               <ListItem>
                 <ListItemText
                   primary="Date Last Used"
-                  secondary={lastDateUsed}
+                  secondary={<DateDistance from={lastDateUsed} />}
                 />
               </ListItem>
               <ListItem>
                 <ListItemText
                   primary="Date Last Rotated"
-                  secondary={lastRotated}
+                  secondary={<DateDistance from={lastRotated} />}
                 />
               </ListItem>
             </Fragment>
@@ -240,7 +248,7 @@ export default class ClientForm extends Component {
             <ListItemText
               disableTypography
               primary={
-                <Typography component="h3" variant="subheading">
+                <Typography component="h3" variant="subtitle1">
                   Expires
                 </Typography>
               }
@@ -303,7 +311,8 @@ export default class ClientForm extends Component {
                           button
                           component={Link}
                           to={`/auth/scopes/${encodeURIComponent(scope)}`}
-                          className={classes.listItemButton}>
+                          className={classes.listItemButton}
+                        >
                           <ListItemText secondary={<code>{scope}</code>} />
                           <LinkIcon />
                         </ListItem>
@@ -323,7 +332,8 @@ export default class ClientForm extends Component {
                 disabled={loading}
                 variant="fab"
                 onClick={this.handleSaveClient}
-                classes={{ root: classes.saveIcon }}>
+                classes={{ root: classes.saveIcon }}
+              >
                 <ContentSaveIcon />
               </Button>
             </div>

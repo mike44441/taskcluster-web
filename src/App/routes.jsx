@@ -35,7 +35,13 @@ export default [
     component: loadable(() =>
       import(/* webpackChunkName: 'ScopesetExpander' */ '../views/ScopesetExpander')
     ),
-    path: '/expansions',
+    path: '/scopesets/expand',
+  },
+  {
+    component: loadable(() =>
+      import(/* webpackChunkName: 'ScopesetComparison' */ '../views/ScopesetComparison')
+    ),
+    path: '/scopesets/compare',
   },
   {
     component: loadable(() =>
@@ -52,12 +58,6 @@ export default [
   {
     component: loadable(() =>
       import(/* webpackChunkName: 'AWS Provisioner' */ '../views/AwsProvisioner')
-    ),
-    path: '/aws-provisioner',
-  },
-  {
-    component: loadable(() =>
-      import(/* webpackChunkName: 'Hooks' */ '../views/AwsProvisioner')
     ),
     path: '/aws-provisioner',
   },
@@ -90,6 +90,18 @@ export default [
       import(/* webpackChunkName: 'Profile' */ '../views/Profile')
     ),
     path: '/profile',
+  },
+  {
+    component: loadable(() =>
+      import(/* webpackChunkName: 'Shell' */ '../views/Shell')
+    ),
+    path: '/shell',
+  },
+  {
+    component: loadable(() =>
+      import(/* webpackChunkName: 'Displays' */ '../views/Display')
+    ),
+    path: '/display',
   },
   {
     component: loadable(() =>

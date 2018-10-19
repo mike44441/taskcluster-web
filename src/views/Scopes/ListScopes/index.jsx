@@ -1,4 +1,4 @@
-import { PureComponent, Fragment } from 'react';
+import React, { PureComponent, Fragment } from 'react';
 import { hot } from 'react-hot-loader';
 import { graphql } from 'react-apollo';
 import { withRouter } from 'react-router-dom';
@@ -11,6 +11,7 @@ import Tab from '@material-ui/core/Tab';
 import Dashboard from '../../../components/Dashboard';
 import RoleScopesTable from '../../../components/RoleScopesTable';
 import ClientScopesTable from '../../../components/ClientScopesTable';
+import HelpView from '../../../components/HelpView';
 import Search from '../../../components/Search';
 import { VIEW_CLIENT_SCOPES_INSPECT_SIZE } from '../../../utils/constants';
 import scopesQuery from '../scopes.graphql';
@@ -38,10 +39,6 @@ export default class ListScopes extends PureComponent {
   };
 
   clientScopes = null;
-
-  handleTabChange = (event, value) => {
-    this.setState({ currentTabIndex: value });
-  };
 
   handleClientsPageChange = ({ cursor, previousCursor }) => {
     const {
@@ -79,9 +76,14 @@ export default class ListScopes extends PureComponent {
     this.setState({ searchTerm: value });
   };
 
+  handleTabChange = (event, value) => {
+    this.setState({ currentTabIndex: value });
+  };
+
   render() {
     const {
       classes,
+      description,
       data: { loading, error, clients, roles },
     } = this.props;
     const { searchTerm, currentTabIndex } = this.state;
@@ -89,20 +91,23 @@ export default class ListScopes extends PureComponent {
     return (
       <Dashboard
         title="Scopes"
+        helpView={<HelpView description={description} />}
         search={
           <Search
             value={searchTerm}
             placeholder="Scope contains"
             onChange={this.handleSearchChange}
           />
-        }>
+        }
+      >
         <Fragment>
           {error && error.graphQLErrors && <ErrorPanel error={error} />}
           <Tabs
             className={classes.tabs}
             fullWidth
             value={currentTabIndex}
-            onChange={this.handleTabChange}>
+            onChange={this.handleTabChange}
+          >
             <Tab label="Roles" />
             <Tab label="Clients" />
           </Tabs>

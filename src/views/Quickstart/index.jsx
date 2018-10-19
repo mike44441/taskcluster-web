@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { withApollo } from 'react-apollo';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
@@ -24,6 +24,8 @@ import { safeDump } from 'js-yaml';
 import debounce from 'lodash.debounce';
 import Dashboard from '../../components/Dashboard';
 import Button from '../../components/Button';
+import HelpView from '../../components/HelpView';
+import urls from '../../utils/urls';
 import githubQuery from './github.graphql';
 
 const initialYaml = {
@@ -120,10 +122,36 @@ const cmdDirectory = (type, org = '<YOUR_ORG>', repo = '<YOUR_REPO>') =>
   },
   iconContainer: {
     marginLeft: theme.spacing.unit,
+    marginTop: theme.spacing.double,
   },
 }))
 export default class QuickStart extends Component {
-  static initialState = {
+  state = {
+    ...this.initialState,
+    owner: '',
+    repo: '',
+    access: 'collaborators',
+    image: 'node',
+    commands: cmdDirectory('node'),
+    commandSelection: 'standard',
+    installedState: null,
+  };
+
+  getInstalledState = debounce(async (owner, repo) => {
+    const { data } = await this.props.client.query({
+      query: githubQuery,
+      variables: {
+        owner,
+        repo,
+      },
+    });
+
+    this.setState({
+      installedState: data.githubRepository.installed ? 'success' : 'error',
+    });
+  }, 1000);
+
+  initialState = {
     events: new Set([
       'pull_request.opened',
       'pull_request.reopened',
@@ -133,15 +161,18 @@ export default class QuickStart extends Component {
     taskDescription: '',
   };
 
-  state = {
-    ...QuickStart.initialState,
-    owner: '',
-    repo: '',
-    access: 'collaborators',
-    image: 'node',
-    commands: cmdDirectory('node'),
-    commandSelection: 'standard',
-    installedState: null,
+  handleEditorChange = editorValue => {
+    this.setState({
+      editorValue,
+    });
+  };
+
+  handleCommandsChange = ({ target: { value } }) => {
+    this.setState({
+      commandSelection: value,
+      commands: value === 'standard' ? cmdDirectory(this.state.image) : [],
+      editorValue: null,
+    });
   };
 
   handleEventsSelection = ({ target: { value } }) => {
@@ -159,28 +190,6 @@ export default class QuickStart extends Component {
     this.setState({ [name]: value, editorValue: null });
   };
 
-  handleCommandsChange = ({ target: { value } }) => {
-    this.setState({
-      commandSelection: value,
-      commands: value === 'standard' ? cmdDirectory(this.state.image) : [],
-      editorValue: null,
-    });
-  };
-
-  getInstalledState = debounce(async (owner, repo) => {
-    const { data } = await this.props.client.query({
-      query: githubQuery,
-      variables: {
-        owner,
-        repo,
-      },
-    });
-
-    this.setState({
-      installedState: data.githubRepository.installed ? 'success' : 'error',
-    });
-  }, 1000);
-
   handleOrgRepoChange = ({ target: { name, value } }) => {
     this.setState({ [name]: value }, () => {
       const { owner, repo } = this.state;
@@ -195,10 +204,8 @@ export default class QuickStart extends Component {
     });
   };
 
-  handleEditorChange = editorValue => {
-    this.setState({
-      editorValue,
-    });
+  handleReset = () => {
+    this.setState(this.initialState);
   };
 
   renderEditor() {
@@ -238,10 +245,6 @@ export default class QuickStart extends Component {
     );
   }
 
-  handleReset = () => {
-    this.setState(QuickStart.initialState);
-  };
-
   render() {
     const { classes } = this.props;
     const {
@@ -257,7 +260,70 @@ export default class QuickStart extends Component {
     } = this.state;
 
     return (
-      <Dashboard title="GitHub Quickstart">
+      <Dashboard
+        title="GitHub Quickstart"
+        helpView={
+          <HelpView
+            description="Create a configuration file and
+                plug the CI into your repository."
+          >
+            <Fragment>
+              <Typography paragraph>
+                This tool lets you easily generate a simple generic{' '}
+                <code>.taskcluster.yml</code> file, which should live in the
+                root of your repository. It defines tasks that you want{' '}
+                {process.env.APPLICATION_NAME} to run for you. The tasks will
+                run when certain GitHub events happen. You will choose the
+                events you are interested in while creating the file.
+              </Typography>
+              <Typography paragraph>
+                For independent developers and organization owners: How to set
+                up your repository with {process.env.APPLICATION_NAME}
+              </Typography>
+              <Typography paragraph>
+                <ul>
+                  <li>
+                    Fill out the form below. All changes in the form will
+                    instantly show up in the code field.
+                  </li>
+                  <li>
+                    When you are done editing, copy the contents of the code
+                    field and paste it into a file named{' '}
+                    <code>.taskcluster.yml</code> in the root of your
+                    repository.
+                  </li>
+                  <li>
+                    Make sure to install the{' '}
+                    <a
+                      href="https://github.com/apps/taskcluster"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Taskcluster-GitHub integration
+                    </a>
+                    .
+                  </li>
+                </ul>
+              </Typography>
+              <Typography paragraph>
+                Optionally, after you create your file, you can edit it here or
+                in you favorite editor to add more functionality. Please refer
+                to the{' '}
+                <a
+                  href={urls.docs(
+                    'reference/integrations/taskcluster-github/docs/taskcluster-yml-v0'
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  full documentation on our configuration files
+                </a>
+                .
+              </Typography>
+            </Fragment>
+          </HelpView>
+        }
+      >
         <Fragment>
           <div className={classes.orgRepo}>
             <TextField
@@ -266,7 +332,7 @@ export default class QuickStart extends Component {
               onChange={this.handleOrgRepoChange}
               value={owner}
             />
-            <Typography className={classes.separator} variant="headline">
+            <Typography className={classes.separator} variant="h5">
               /
             </Typography>
             <TextField
@@ -392,7 +458,8 @@ export default class QuickStart extends Component {
                 value={access}
                 name="access"
                 onChange={this.handleInputChange}
-                margin="normal">
+                margin="normal"
+              >
                 <MenuItem value="public">Public</MenuItem>
                 <MenuItem value="collaborators">Collaborators</MenuItem>
               </TextField>
@@ -406,7 +473,8 @@ export default class QuickStart extends Component {
                 value={image}
                 name="image"
                 onChange={this.handleInputChange}
-                margin="normal">
+                margin="normal"
+              >
                 <MenuItem value="node">Node.js</MenuItem>
                 <MenuItem value="python">Python</MenuItem>
                 <MenuItem value="rust">Rust</MenuItem>
@@ -420,7 +488,8 @@ export default class QuickStart extends Component {
                 label="Commands"
                 value={commandSelection}
                 onChange={this.handleCommandsChange}
-                margin="normal">
+                margin="normal"
+              >
                 <MenuItem value="standard">
                   Clone repo and run my tests
                 </MenuItem>
@@ -435,7 +504,8 @@ export default class QuickStart extends Component {
               variant="fab"
               onClick={this.handleReset}
               color="secondary"
-              className={classes.resetButton}>
+              className={classes.resetButton}
+            >
               <RestartIcon />
             </Button>
           </Tooltip>

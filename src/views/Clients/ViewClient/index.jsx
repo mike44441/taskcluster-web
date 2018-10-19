@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
@@ -10,7 +10,7 @@ import createClientQuery from './createClient.graphql';
 import deleteClientQuery from './deleteClient.graphql';
 import disableClientQuery from './disableClient.graphql';
 import enableClientQuery from './enableClient.graphql';
-// import resetAccessTokenQuery from './resetAccessToken.graphql';
+import resetAccessTokenQuery from './resetAccessToken.graphql';
 import clientQuery from './client.graphql';
 
 @hot(module)
@@ -27,32 +27,11 @@ export default class ViewClient extends Component {
   state = {
     loading: false,
     error: null,
+    accessToken: null,
   };
 
-  handleSaveClient = async (client, clientId) => {
-    const { isNewClient } = this.props;
-
-    this.setState({ error: null, loading: true });
-
-    try {
-      await this.props.client.mutate({
-        mutation: isNewClient ? createClientQuery : updateClientQuery,
-        variables: {
-          clientId,
-          client,
-        },
-      });
-
-      this.setState({ error: null, loading: false });
-
-      if (isNewClient) {
-        this.props.history.push(
-          `/auth/clients/${encodeURIComponent(clientId)}`
-        );
-      }
-    } catch (error) {
-      this.setState({ error, loading: false });
-    }
+  handleAccessTokenWarningClose = () => {
+    this.setState({ accessToken: null });
   };
 
   handleDeleteClient = async clientId => {
@@ -104,17 +83,74 @@ export default class ViewClient extends Component {
     }
   };
 
-  // TODO: Add action logic
-  handleResetAccessToken = () => {};
+  handleResetAccessToken = async clientId => {
+    const {
+      data: { refetch },
+      client,
+    } = this.props;
+
+    this.setState({ error: null, loading: true });
+
+    try {
+      const result = await client.mutate({
+        mutation: resetAccessTokenQuery,
+        variables: {
+          clientId,
+        },
+      });
+
+      this.setState({
+        error: null,
+        loading: false,
+        accessToken: result.data.resetAccessToken.accessToken,
+      });
+      refetch();
+    } catch (error) {
+      this.setState({ error, loading: false, accessToken: null });
+    }
+  };
+
+  handleSaveClient = async (client, clientId) => {
+    const { isNewClient } = this.props;
+
+    this.setState({ error: null, loading: true });
+
+    try {
+      await this.props.client.mutate({
+        mutation: isNewClient ? createClientQuery : updateClientQuery,
+        variables: {
+          clientId,
+          client,
+        },
+      });
+
+      this.setState({ error: null, loading: false });
+
+      if (isNewClient) {
+        this.props.history.push(
+          `/auth/clients/${encodeURIComponent(clientId)}`
+        );
+      }
+    } catch (error) {
+      this.setState({ error, loading: false });
+    }
+  };
 
   render() {
-    const { error, loading } = this.state;
+    const { error, loading, accessToken } = this.state;
     const { isNewClient, data } = this.props;
 
     return (
       <Dashboard title={isNewClient ? 'Create Client' : 'Client'}>
         <Fragment>
           {error && <ErrorPanel error={error} />}
+          {accessToken && (
+            <ErrorPanel
+              warning
+              onClose={this.handleAccessTokenWarningClose}
+              error={`The access token for this clientId is ${accessToken}`}
+            />
+          )}
           {isNewClient ? (
             <ClientForm
               loading={loading}
@@ -134,6 +170,7 @@ export default class ViewClient extends Component {
                   <ClientForm
                     loading={loading}
                     client={data.client}
+                    onResetAccessToken={this.handleResetAccessToken}
                     onSaveClient={this.handleSaveClient}
                     onDeleteClient={this.handleDeleteClient}
                     onDisableClient={this.handleDisableClient}

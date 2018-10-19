@@ -1,7 +1,9 @@
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { bool, func } from 'prop-types';
+import { string, bool, func, oneOfType, object } from 'prop-types';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
+import Code from '@mozilla-frontend-infra/components/Code';
+import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -12,6 +14,7 @@ import Switch from '@material-ui/core/Switch';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Tooltip from '@material-ui/core/Tooltip';
+import Grid from '@material-ui/core/Grid';
 import IconButton from '@material-ui/core/IconButton';
 import Typography from '@material-ui/core/Typography';
 import FlashIcon from 'mdi-react/FlashIcon';
@@ -21,12 +24,14 @@ import LinkIcon from 'mdi-react/LinkIcon';
 import RefreshIcon from 'mdi-react/RefreshIcon';
 import ContentSaveIcon from 'mdi-react/ContentSaveIcon';
 import { docs } from 'taskcluster-lib-urls';
-import Button from '../../components/Button';
-import SpeedDial from '../../components/SpeedDial';
-import SpeedDialAction from '../../components/SpeedDialAction';
-import DateDistance from '../../components/DateDistance';
+import Button from '../Button';
+import SpeedDial from '../SpeedDial';
+import SpeedDialAction from '../SpeedDialAction';
+import DialogAction from '../DialogAction';
+import DateDistance from '../DateDistance';
 import { HOOKS_LAST_FIRE_TYPE } from '../../utils/constants';
 import { hook } from '../../utils/prop-types';
+import removeKeys from '../../utils/removeKeys';
 
 const initialHook = {
   metadata: {
@@ -82,43 +87,33 @@ const initialHook = {
   listItemButton: {
     ...theme.mixins.listItemButton,
   },
-  saveIcon: {
+  successIcon: {
     ...theme.mixins.successIcon,
+  },
+  deleteIcon: {
+    ...theme.mixins.errorIcon,
+  },
+  code: {
+    maxHeight: '70vh',
+    margin: 0,
+  },
+  codeEditor: {
+    overflow: 'auto',
+    maxHeight: '70vh',
   },
 }))
 /** A form to view/edit/create a hook */
 export default class HookForm extends Component {
-  static propTypes = {
-    /** A GraphQL hook response. Not needed when creating a new hook  */
-    hook,
-    /** Set to `true` when creating a new hook. */
-    isNewHook: bool,
-    /** Callback function fired when a hook status is refreshed. */
-    onRefreshHookStatus: func,
-  };
-
   static defaultProps = {
     isNewHook: false,
     hook: initialHook,
     onRefreshHookStatus: null,
-  };
-
-  state = {
-    hookId: '',
-    hookGroupId: '',
-    name: '',
-    owner: '',
-    description: '',
-    emailOnError: true,
-    // eslint-disable-next-line react/no-unused-state
-    task: null,
-    taskInput: null,
-    // eslint-disable-next-line react/no-unused-state
-    triggerSchema: null,
-    taskValidJson: true,
-    triggerSchemaValidJson: true,
-    scheduleTextField: '',
-    schedule: null,
+    onTriggerHook: null,
+    onCreateHook: null,
+    onUpdateHook: null,
+    onDeleteHook: null,
+    actionLoading: false,
+    error: null,
   };
 
   static getDerivedStateFromProps({ hook }, state) {
@@ -141,37 +136,127 @@ export default class HookForm extends Component {
     };
   }
 
-  handleInputChange = ({ target: { name, value } }) => {
-    this.setState({ [name]: value });
+  static propTypes = {
+    /** A GraphQL hook response. Not needed when creating a new hook  */
+    hook,
+    /** Set to `true` when creating a new hook. */
+    isNewHook: bool,
+    /** Callback function fired when a hook status is refreshed. */
+    onRefreshHookStatus: func,
+    /** Callback function fired when a hook is triggered. */
+    onTriggerHook: func,
+    /** Callback function fired when a hook is created. */
+    onCreateHook: func,
+    /** Callback function fired when a hook is updated. */
+    onUpdateHook: func,
+    /** Callback function fired when a hook is deleted. */
+    onDeleteHook: func,
+    /** If true, action buttons will be disabled. */
+    actionLoading: bool,
+    /** Error to display. */
+    error: oneOfType([string, object]),
   };
 
-  // TODO: Handle trigger hook
-  handleTriggerHook = () => {
-    // const hook = this.state.triggerSchema;
+  state = {
+    hookId: '',
+    hookGroupId: '',
+    name: '',
+    owner: '',
+    description: '',
+    emailOnError: true,
+    // eslint-disable-next-line react/no-unused-state
+    task: null,
+    taskInput: null,
+    // eslint-disable-next-line react/no-unused-state
+    triggerSchema: null,
+    triggerContextInput: JSON.stringify({}),
+    taskValidJson: true,
+    triggerSchemaValidJson: true,
+    scheduleTextField: '',
+    schedule: null,
+    dialogOpen: false,
   };
 
-  // TODO: Handle save hook
-  handleSaveHook = () => {
-    // const hook = this.state.hook;
+  getHookDefinition = () => {
+    const {
+      name,
+      description,
+      owner,
+      emailOnError,
+      schedule,
+      task,
+      triggerSchema,
+    } = this.state;
+    const definition = {
+      metadata: {
+        name,
+        description,
+        owner,
+        emailOnError,
+      },
+      schedule,
+      task,
+      triggerSchema,
+    };
+
+    return removeKeys(definition, ['__typename']);
+  };
+
+  handleActionDialogClose = () => {
+    this.setState({ dialogOpen: false });
+  };
+
+  handleCreateHook = () => {
+    const { onCreateHook } = this.props;
+    const { hookId, hookGroupId } = this.state;
+
+    onCreateHook &&
+      onCreateHook({
+        hookId,
+        hookGroupId,
+        payload: this.getHookDefinition(),
+      });
+  };
+
+  handleDeleteCronJob = ({ currentTarget: { name } }) => {
+    this.setState({
+      schedule: this.state.schedule.filter(cronJob => cronJob !== name),
+    });
+  };
+
+  handleDeleteHook = () => {
+    const { onDeleteHook } = this.props;
+    const { hookId, hookGroupId } = this.state;
+
+    onDeleteHook &&
+      onDeleteHook({
+        hookId,
+        hookGroupId,
+      });
   };
 
   handleEmailOnErrorChange = () => {
     this.setState({ emailOnError: !this.state.emailOnError });
   };
 
-  handleTriggerSchemaChange = value => {
-    try {
-      this.setState({
-        // eslint-disable-next-line react/no-unused-state
-        triggerSchema: JSON.parse(value),
-        triggerSchemaValidJson: true,
-        triggerSchemaInput: value,
-      });
-    } catch (err) {
-      this.setState({
-        triggerSchemaValidJson: false,
-        triggerSchemaInput: value,
-      });
+  handleInputChange = ({ target: { name, value } }) => {
+    this.setState({ [name]: value });
+  };
+
+  handleNewCronJob = () => {
+    const { scheduleTextField, schedule } = this.state;
+
+    this.setState({
+      scheduleTextField: '',
+      schedule: schedule.concat(scheduleTextField),
+    });
+  };
+
+  handleRefreshHookStatus = () => {
+    const { onRefreshHookStatus } = this.props;
+
+    if (onRefreshHookStatus) {
+      onRefreshHookStatus();
     }
   };
 
@@ -191,12 +276,51 @@ export default class HookForm extends Component {
     }
   };
 
-  handleRefreshHookStatus = () => {
-    const { onRefreshHookStatus } = this.props;
+  handleTriggerContextChange = triggerContextInput => {
+    this.setState({ triggerContextInput });
+  };
 
-    if (onRefreshHookStatus) {
-      onRefreshHookStatus();
+  handleTriggerHookClick = () => {
+    this.setState({ dialogOpen: true });
+  };
+
+  handleTriggerHookSubmit = () => {
+    const { onTriggerHook } = this.props;
+    const { hookId, hookGroupId, triggerContextInput } = this.state;
+
+    return onTriggerHook({
+      hookId,
+      hookGroupId,
+      payload: JSON.parse(triggerContextInput),
+    });
+  };
+
+  handleTriggerSchemaChange = value => {
+    try {
+      this.setState({
+        // eslint-disable-next-line react/no-unused-state
+        triggerSchema: JSON.parse(value),
+        triggerSchemaValidJson: true,
+        triggerSchemaInput: value,
+      });
+    } catch (err) {
+      this.setState({
+        triggerSchemaValidJson: false,
+        triggerSchemaInput: value,
+      });
     }
+  };
+
+  handleUpdateHook = () => {
+    const { onUpdateHook } = this.props;
+    const { hookId, hookGroupId } = this.state;
+
+    onUpdateHook &&
+      onUpdateHook({
+        hookId,
+        hookGroupId,
+        payload: this.getHookDefinition(),
+      });
   };
 
   validHook = () => {
@@ -213,39 +337,28 @@ export default class HookForm extends Component {
     );
   };
 
-  handleNewCronJob = () => {
-    const { scheduleTextField, schedule } = this.state;
-
-    this.setState({
-      scheduleTextField: '',
-      schedule: schedule.concat(scheduleTextField),
-    });
-  };
-
-  handleDeleteCronJob = ({ currentTarget: { name } }) => {
-    this.setState({
-      schedule: this.state.schedule.filter(cronJob => cronJob !== name),
-    });
-  };
-
   render() {
-    const { hook, classes, isNewHook } = this.props;
+    const { actionLoading, error, hook, classes, isNewHook } = this.props;
     const {
       description,
       hookId,
       hookGroupId,
       owner,
+      name,
       emailOnError,
       scheduleTextField,
       schedule,
       taskInput,
       triggerSchemaInput,
+      triggerContextInput,
+      dialogOpen,
     } = this.state;
     /* eslint-disable-next-line no-underscore-dangle */
     const lastFireTypeName = !isNewHook && hook.status.lastFire.__typename;
 
     return (
       <Fragment>
+        {error && !dialogOpen && <ErrorPanel error={error} />}
         <List>
           {isNewHook && (
             <Fragment>
@@ -290,7 +403,17 @@ export default class HookForm extends Component {
           <ListItem>
             <TextField
               required
-              label="Owner"
+              label="Name"
+              name="name"
+              onChange={this.handleInputChange}
+              fullWidth
+              value={name}
+            />
+          </ListItem>
+          <ListItem>
+            <TextField
+              required
+              label="Owner Email"
               name="owner"
               onChange={this.handleInputChange}
               fullWidth
@@ -302,6 +425,7 @@ export default class HookForm extends Component {
               required
               label="Description"
               name="description"
+              placeholder="Hook description (markdown)"
               onChange={this.handleInputChange}
               fullWidth
               multiline
@@ -337,7 +461,8 @@ export default class HookForm extends Component {
                 />
                 <IconButton
                   onClick={this.handleRefreshHookStatus}
-                  className={classes.iconButton}>
+                  className={classes.iconButton}
+                >
                   <RefreshIcon />
                 </IconButton>
               </ListItem>
@@ -346,7 +471,8 @@ export default class HookForm extends Component {
                   button
                   component={Link}
                   className={classes.listItemButton}
-                  to={`/tasks/${hook.status.lastFire.taskId}`}>
+                  to={`/tasks/${hook.status.lastFire.taskId}`}
+                >
                   <ListItemText
                     primary="Last Fired Result"
                     secondary={hook.status.lastFire.taskId}
@@ -398,7 +524,8 @@ export default class HookForm extends Component {
               />
               <IconButton
                 className={classes.iconButton}
-                onClick={this.handleNewCronJob}>
+                onClick={this.handleNewCronJob}
+              >
                 <PlusIcon />
               </IconButton>
             </ListItem>
@@ -408,7 +535,8 @@ export default class HookForm extends Component {
                 <IconButton
                   className={classes.iconButton}
                   name={cronJob}
-                  onClick={this.handleDeleteCronJob}>
+                  onClick={this.handleDeleteCronJob}
+                >
                   <DeleteIcon />
                 </IconButton>
               </ListItem>
@@ -422,7 +550,8 @@ export default class HookForm extends Component {
                   <a
                     href="https://taskcluster.github.io/json-e/"
                     target="_blank"
-                    rel="noopener noreferrer">
+                    rel="noopener noreferrer"
+                  >
                     JSON-e
                   </a>{' '}
                   to create the the task definition. See{' '}
@@ -433,8 +562,11 @@ export default class HookForm extends Component {
                       href={docs(
                         `https://${process.env.TASKCLUSTER_ROOT_URL}`,
                         'reference/core/taskcluster-hooks/docs/firing-hooks'
-                      )}>
-                      {'"'}firing hooks{'"'}
+                      )}
+                    >
+                      {'"'}
+                      firing hooks
+                      {'"'}
                     </a>
                   }{' '}
                   for more information.
@@ -465,10 +597,11 @@ export default class HookForm extends Component {
             <div className={classes.actionButton}>
               <Button
                 requiresAuth
-                color="secondary"
+                classes={{ root: classes.successIcon }}
                 variant="fab"
-                disabled={!this.validHook()}
-                onClick={this.handleSaveHook}>
+                disabled={!this.validHook() || actionLoading}
+                onClick={this.handleCreateHook}
+              >
                 <ContentSaveIcon />
               </Button>
             </div>
@@ -478,23 +611,81 @@ export default class HookForm extends Component {
             <SpeedDialAction
               requiresAuth
               tooltipOpen
-              icon={<ContentSaveIcon className={classes.saveIcon} />}
-              onClick={this.handleSaveHook}
-              classes={{ button: classes.saveIcon }}
+              icon={<ContentSaveIcon />}
+              onClick={this.handleUpdateHook}
               tooltipTitle="Save Hook"
               ButtonProps={{
-                disabled: !this.validHook(),
+                color: 'secondary',
+                disabled: !this.validHook() || actionLoading,
               }}
             />
             <SpeedDialAction
               requiresAuth
               tooltipOpen
+              icon={<DeleteIcon />}
+              onClick={this.handleDeleteHook}
+              classes={{ button: classes.deleteIcon }}
+              ButtonProps={{
+                disabled: actionLoading,
+              }}
+              tooltipTitle="Delete Hook"
+            />
+            <SpeedDialAction
+              requiresAuth
+              tooltipOpen
               icon={<FlashIcon />}
-              onClick={this.handleTriggerHook}
-              ButtonProps={{ color: 'secondary' }}
+              onClick={this.handleTriggerHookClick}
+              classes={{ button: classes.successIcon }}
+              ButtonProps={{
+                disabled: !this.validHook() || actionLoading,
+              }}
               tooltipTitle="Trigger Hook"
             />
           </SpeedDial>
+        )}
+        {dialogOpen && (
+          <DialogAction
+            fullScreen
+            open={dialogOpen}
+            onSubmit={this.handleTriggerHookSubmit}
+            onComplete={this.handleActionDialogClose}
+            onClose={this.handleActionDialogClose}
+            confirmText="Trigger Hook"
+            body={
+              <Fragment>
+                {error && dialogOpen && <ErrorPanel error={error} />}
+                <Typography gutterBottom>
+                  Trigger Hook{' '}
+                  <code>
+                    {hookGroupId}/{hookId}
+                  </code>{' '}
+                  with the following context:
+                </Typography>
+                <Grid container spacing={16}>
+                  <Grid item lg={6} md={6} sm={12}>
+                    <Typography gutterBottom variant="subtitle1">
+                      Context
+                    </Typography>
+                    <CodeEditor
+                      className={classes.codeEditor}
+                      options={{ mode: 'json' }}
+                      lint
+                      value={triggerContextInput}
+                      onChange={this.handleTriggerContextChange}
+                    />
+                  </Grid>
+                  <Grid item lg={6} md={6} sm={12}>
+                    <Typography gutterBottom variant="subtitle1">
+                      Schema
+                    </Typography>
+                    <Code language="json" className={classes.code}>
+                      {JSON.stringify(triggerSchemaInput, null, 2)}
+                    </Code>
+                  </Grid>
+                </Grid>
+              </Fragment>
+            }
+          />
         )}
       </Fragment>
     );

@@ -1,7 +1,8 @@
-import { Fragment, Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { string, arrayOf } from 'prop-types';
-import { memoizeWith, pipe, map, isEmpty, sort as rSort } from 'ramda';
+import { pipe, map, isEmpty, sort as rSort } from 'ramda';
+import memoize from 'fast-memoize';
 import { camelCase } from 'change-case/change-case';
 import TableRow from '@material-ui/core/TableRow';
 import TableCell from '@material-ui/core/TableCell';
@@ -19,6 +20,10 @@ const sorted = pipe(
 );
 
 export default class AwsProvisionerWorkerTypeTable extends Component {
+  static defaultProps = {
+    searchTerm: null,
+  };
+
   static propTypes = {
     /** A GraphQL roles response. */
     workerTypes: arrayOf(awsProvisionerWorkerTypeSummary).isRequired,
@@ -26,28 +31,12 @@ export default class AwsProvisionerWorkerTypeTable extends Component {
     searchTerm: string,
   };
 
-  static defaultProps = {
-    searchTerm: null,
-  };
-
   state = {
     sortBy: null,
     sortDirection: null,
   };
 
-  handleHeaderClick = sortBy => {
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
-
-  createSortedWorkerTypes = memoizeWith(
-    (workerTypes, sortBy, sortDirection, searchTerm) => {
-      const ids = sorted(workerTypes);
-
-      return `${ids.join('-')}-${sortBy}-${sortDirection}-${searchTerm}`;
-    },
+  createSortedWorkerTypes = memoize(
     (workerTypes, sortBy, sortDirection, searchTerm) => {
       const sortByProperty = camelCase(sortBy);
       const filteredWorkerTypes = searchTerm
@@ -66,8 +55,22 @@ export default class AwsProvisionerWorkerTypeTable extends Component {
 
             return sort(firstElement, secondElement);
           });
+    },
+    {
+      serializer: ([workerTypes, sortBy, sortDirection, searchTerm]) => {
+        const ids = sorted(workerTypes);
+
+        return `${ids.join('-')}-${sortBy}-${sortDirection}-${searchTerm}`;
+      },
     }
   );
+
+  handleHeaderClick = sortBy => {
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
 
   render() {
     const { workerTypes, searchTerm } = this.props;
@@ -99,14 +102,11 @@ export default class AwsProvisionerWorkerTypeTable extends Component {
                 <TableCellListItem
                   button
                   component={Link}
-                  to={`/aws-provisioner/${workerType.workerType}`}>
+                  to={`/aws-provisioner/${workerType.workerType}`}
+                >
                   <ListItemText
                     disableTypography
-                    primary={
-                      <Typography variant="body1">
-                        {workerType.workerType}
-                      </Typography>
-                    }
+                    primary={<Typography>{workerType.workerType}</Typography>}
                   />
                   <LinkIcon size={iconSize} />
                 </TableCellListItem>

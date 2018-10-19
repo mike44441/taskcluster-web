@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import { bool, node, string } from 'prop-types';
 import { Link } from 'react-router-dom';
 import classNames from 'classnames';
@@ -13,6 +13,8 @@ import Divider from '@material-ui/core/Divider';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 import MenuIcon from 'mdi-react/MenuIcon';
+import CloseIcon from 'mdi-react/CloseIcon';
+import HelpIcon from 'mdi-react/HelpIcon';
 import LightBulbOn from 'mdi-react/LightbulbOnIcon';
 import LightBulbOnOutline from 'mdi-react/LightbulbOnOutlineIcon';
 import PageTitle from '../PageTitle';
@@ -20,6 +22,7 @@ import UserMenu from './UserMenu';
 import SidebarList from './SidebarList';
 import { THEME } from '../../utils/constants';
 import { withThemeToggler } from '../../utils/ToggleTheme';
+import reportError from '../../utils/reportError';
 
 @withStyles(
   theme => ({
@@ -67,6 +70,14 @@ import { withThemeToggler } from '../../utils/ToggleTheme';
       borderRight: 0,
       backgroundColor: theme.palette.primary.main,
     },
+    helpDrawerPaper: {
+      width: '40vw',
+      [theme.breakpoints.down('sm')]: {
+        width: '90vw',
+      },
+      backgroundColor: theme.palette.primary.main,
+      padding: theme.spacing.triple,
+    },
     title: {
       textDecoration: 'none',
       color: theme.palette.text.primary,
@@ -92,11 +103,16 @@ import { withThemeToggler } from '../../utils/ToggleTheme';
         width: `calc(100% - ${theme.drawerWidth}px)`,
       },
     },
-    lightBulbButton: {
+    appBarButton: {
       marginLeft: theme.spacing.unit,
     },
     appIcon: {
       fill: theme.palette.common.white,
+    },
+    helpCloseIcon: {
+      position: 'absolute',
+      top: theme.spacing.unit,
+      right: theme.spacing.unit,
     },
   }),
   { withTheme: true }
@@ -106,6 +122,13 @@ import { withThemeToggler } from '../../utils/ToggleTheme';
  * Render the layout for application-based views.
  */
 export default class Dashboard extends Component {
+  static defaultProps = {
+    title: '',
+    disablePadding: false,
+    search: null,
+    helpView: null,
+  };
+
   static propTypes = {
     /**
      * The content to render within the main view body.
@@ -124,26 +147,33 @@ export default class Dashboard extends Component {
      * Render elements in the app bar for searching purposes.
      */
     search: node,
-  };
-
-  static defaultProps = {
-    title: '',
-    disablePadding: false,
-    search: null,
+    /**
+     * Each page could contain important information for the new user
+     * of a particular view, but often doesn't warrant needing to
+     * be shown every time.
+     */
+    helpView: node,
   };
 
   state = {
     mobileOpen: false,
+    showHelpView: false,
     error: null,
   };
-
-  componentDidCatch(error) {
-    this.setState({ error });
-  }
 
   handleDrawerToggle = () => {
     this.setState({ mobileOpen: !this.state.mobileOpen });
   };
+
+  handleHelpViewToggle = () => {
+    this.setState({ showHelpView: !this.state.showHelpView });
+  };
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ error });
+
+    reportError(error, errorInfo);
+  }
 
   render() {
     const {
@@ -154,10 +184,11 @@ export default class Dashboard extends Component {
       theme,
       title,
       search,
+      helpView,
       onToggleTheme,
       ...props
     } = this.props;
-    const { error, mobileOpen } = this.state;
+    const { error, mobileOpen, showHelpView } = this.state;
     const drawer = (
       <div>
         <div className={classes.toolbar}>
@@ -165,15 +196,17 @@ export default class Dashboard extends Component {
             color="inherit"
             aria-label="close drawer"
             onClick={this.handleDrawerToggle}
-            className={classes.navIconHide}>
+            className={classes.navIconHide}
+          >
             <MenuIcon />
           </IconButton>
           <Typography
             component={Link}
             to="/"
-            variant="title"
+            variant="h6"
             noWrap
-            className={classes.title}>
+            className={classes.title}
+          >
             {process.env.APPLICATION_NAME}
           </Typography>
         </div>
@@ -193,17 +226,19 @@ export default class Dashboard extends Component {
               color="inherit"
               aria-label="open drawer"
               onClick={this.handleDrawerToggle}
-              className={classes.navIconHide}>
+              className={classes.navIconHide}
+            >
               <MenuIcon className={classes.appIcon} />
             </IconButton>
-            <Typography variant="title" noWrap className={classes.appBarTitle}>
+            <Typography variant="h6" noWrap className={classes.appBarTitle}>
               {title}
             </Typography>
             {search}
             <Tooltip placement="bottom" title="Toggle light/dark theme">
               <IconButton
-                className={classes.lightBulbButton}
-                onClick={onToggleTheme}>
+                className={classes.appBarButton}
+                onClick={onToggleTheme}
+              >
                 {theme.palette.type === 'dark' ? (
                   <LightBulbOn className={classes.appIcon} />
                 ) : (
@@ -211,6 +246,16 @@ export default class Dashboard extends Component {
                 )}
               </IconButton>
             </Tooltip>
+            {helpView && (
+              <Tooltip placement="bottom" title="Page Information">
+                <IconButton
+                  onClick={this.handleHelpViewToggle}
+                  className={classes.appBarButton}
+                >
+                  <HelpIcon className={classes.appIcon} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Toolbar>
         </AppBar>
         <Hidden mdUp>
@@ -224,7 +269,8 @@ export default class Dashboard extends Component {
             }}
             ModalProps={{
               keepMounted: true,
-            }}>
+            }}
+          >
             {drawer}
           </Drawer>
         </Hidden>
@@ -237,10 +283,33 @@ export default class Dashboard extends Component {
             }}
             classes={{
               paper: classes.drawerPaper,
-            }}>
+            }}
+          >
             {drawer}
           </Drawer>
         </Hidden>
+        <Drawer
+          variant="temporary"
+          anchor={theme.direction === 'rtl' ? 'left' : 'right'}
+          open={showHelpView}
+          onClose={this.handleHelpViewToggle}
+          classes={{
+            paper: classes.helpDrawerPaper,
+          }}
+          ModalProps={{
+            keepMounted: true,
+          }}
+        >
+          <Fragment>
+            <IconButton
+              onClick={this.handleHelpViewToggle}
+              className={classes.helpCloseIcon}
+            >
+              <CloseIcon />
+            </IconButton>
+            {helpView}
+          </Fragment>
+        </Drawer>
         <main
           className={classNames(
             classes.content,
@@ -249,7 +318,8 @@ export default class Dashboard extends Component {
             },
             className
           )}
-          {...props}>
+          {...props}
+        >
           {error ? <ErrorPanel error={error} /> : children}
         </main>
       </div>

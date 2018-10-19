@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Switch } from 'react-router-dom';
 import RouteWithProps from '../../components/RouteWithProps';
 import loadable from '../../utils/loadable';
@@ -18,6 +18,8 @@ export default class Secrets extends Component {
       match: { path },
       ...props
     } = this.props;
+    const description =
+      'Manage secrets: values that can only be retrieved with the appropriate scopes.';
 
     return (
       <Switch>
@@ -26,13 +28,20 @@ export default class Secrets extends Component {
           {...props}
           isNewSecret
           component={ViewSecret}
+          description={description}
         />
         <RouteWithProps
           path={`${path}/:secret`}
           {...props}
           component={ViewSecret}
+          description={description}
         />
-        <RouteWithProps path={path} {...props} component={ViewSecrets} />
+        <RouteWithProps
+          path={path}
+          {...props}
+          component={ViewSecrets}
+          description={description}
+        />
       </Switch>
     );
   }

@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { graphql } from 'react-apollo';
 import dotProp from 'dot-prop-immutable';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
@@ -9,6 +9,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import PlusIcon from 'mdi-react/PlusIcon';
 import Dashboard from '../../../components/Dashboard';
 import SecretsTable from '../../../components/SecretsTable';
+import HelpView from '../../../components/HelpView';
 import Button from '../../../components/Button';
 import { VIEW_SECRETS_PAGE_SIZE } from '../../../utils/constants';
 import secretsQuery from './secrets.graphql';
@@ -68,11 +69,15 @@ export default class ViewSecrets extends Component {
   render() {
     const {
       classes,
+      description,
       data: { loading, error, secrets },
     } = this.props;
 
     return (
-      <Dashboard title="Secrets">
+      <Dashboard
+        title="Secrets"
+        helpView={<HelpView description={description} />}
+      >
         <Fragment>
           {!secrets && loading && <Spinner loading />}
           {error && error.graphQLErrors && <ErrorPanel error={error} />}
@@ -85,12 +90,14 @@ export default class ViewSecrets extends Component {
           <Tooltip
             enterDelay={300}
             id="create-secret-tooltip"
-            title="Create Secret">
+            title="Create Secret"
+          >
             <Button
               onClick={this.handleCreate}
               variant="fab"
               color="secondary"
-              className={classes.plusIcon}>
+              className={classes.plusIcon}
+            >
               <PlusIcon />
             </Button>
           </Tooltip>

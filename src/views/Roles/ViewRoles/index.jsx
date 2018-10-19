@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { PureComponent, Fragment } from 'react';
+import React, { PureComponent, Fragment } from 'react';
 import { graphql } from 'react-apollo';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
@@ -9,6 +9,7 @@ import Dashboard from '../../../components/Dashboard';
 import Search from '../../../components/Search';
 import Button from '../../../components/Button';
 import RolesTable from '../../../components/RolesTable';
+import HelpView from '../../../components/HelpView';
 import rolesQuery from './roles.graphql';
 
 @hot(module)
@@ -23,17 +24,18 @@ export default class ViewRoles extends PureComponent {
     roleSearch: '',
   };
 
-  handleRoleSearchChange = ({ target }) => {
-    this.setState({ roleSearch: target.value });
-  };
-
   handleCreate = () => {
     this.props.history.push('/auth/roles/create');
+  };
+
+  handleRoleSearchChange = ({ target }) => {
+    this.setState({ roleSearch: target.value });
   };
 
   render() {
     const {
       classes,
+      description,
       data: { loading, error, roles },
     } = this.props;
     const { roleSearch } = this.state;
@@ -41,6 +43,7 @@ export default class ViewRoles extends PureComponent {
     return (
       <Dashboard
         title="Roles"
+        helpView={<HelpView description={description} />}
         search={
           <Search
             disabled={loading}
@@ -48,7 +51,8 @@ export default class ViewRoles extends PureComponent {
             onChange={this.handleRoleSearchChange}
             placeholder="Role starts with"
           />
-        }>
+        }
+      >
         <Fragment>
           {!roles && loading && <Spinner loading />}
           {error && error.graphQLErrors && <ErrorPanel error={error} />}
@@ -57,7 +61,8 @@ export default class ViewRoles extends PureComponent {
             onClick={this.handleCreate}
             variant="fab"
             color="secondary"
-            className={classes.plusIcon}>
+            className={classes.plusIcon}
+          >
             <PlusIcon />
           </Button>
         </Fragment>

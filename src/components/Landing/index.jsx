@@ -1,9 +1,10 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { node, string } from 'prop-types';
 import classNames from 'classnames';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import PageTitle from '../PageTitle';
+import reportError from '../../utils/reportError';
 
 @withStyles(theme => ({
   root: {
@@ -27,6 +28,10 @@ import PageTitle from '../PageTitle';
  * Render the layout for plain/non-application-based views.
  */
 export default class Landing extends Component {
+  static defaultProps = {
+    title: '',
+  };
+
   static propTypes = {
     /**
      * The content to render within the main view body.
@@ -38,16 +43,14 @@ export default class Landing extends Component {
     title: string,
   };
 
-  static defaultProps = {
-    title: '',
-  };
-
   state = {
     error: null,
   };
 
-  componentDidCatch(error) {
+  componentDidCatch(error, errorInfo) {
     this.setState({ error });
+
+    reportError(error, errorInfo);
   }
 
   render() {

@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { graphql } from 'react-apollo';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
@@ -11,6 +11,7 @@ import Dashboard from '../../../components/Dashboard';
 import Search from '../../../components/Search';
 import SpeedDial from '../../../components/SpeedDial';
 import SpeedDialAction from '../../../components/SpeedDialAction';
+import HelpView from '../../../components/HelpView';
 import AwsProvisionerWorkerTypeTable from '../../../components/AwsProvisionerWorkerTypeTable';
 import workerTypesQuery from './workerTypes.graphql';
 
@@ -29,10 +30,6 @@ export default class ViewRoles extends Component {
     workerTypeSearch: '',
   };
 
-  handleWorkerTypeSearchChange = ({ target }) => {
-    this.setState({ workerTypeSearch: target.value });
-  };
-
   handleCreate = () => {
     this.props.history.push('/aws-provisioner/create');
   };
@@ -45,9 +42,14 @@ export default class ViewRoles extends Component {
     this.props.history.push('/aws-provisioner/recent-errors');
   };
 
+  handleWorkerTypeSearchChange = ({ target }) => {
+    this.setState({ workerTypeSearch: target.value });
+  };
+
   render() {
     const {
       classes,
+      description,
       data: { loading, error, awsProvisionerWorkerTypeSummaries },
     } = this.props;
     const { workerTypeSearch } = this.state;
@@ -55,6 +57,7 @@ export default class ViewRoles extends Component {
     return (
       <Dashboard
         title="AWS Provisioner Worker Types"
+        helpView={<HelpView description={description} />}
         search={
           <Search
             disabled={loading}
@@ -62,7 +65,8 @@ export default class ViewRoles extends Component {
             onChange={this.handleWorkerTypeSearchChange}
             placeholder="Worker type starts with"
           />
-        }>
+        }
+      >
         <Fragment>
           {!awsProvisionerWorkerTypeSummaries && loading && <Spinner loading />}
           {error && error.graphQLErrors && <ErrorPanel error={error} />}

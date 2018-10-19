@@ -32,6 +32,7 @@ export const HOOKS_LAST_FIRE_TYPE = {
   SUCCESSFUL_FIRE: 'HookSuccessfulFire',
   FAILED_FIRE: 'HookFailedFire',
 };
+
 export const THEME = {
   TEN_PERCENT_WHITE: fade('#fff', 0.1),
   TEN_PERCENT_BLACK: fade('#000', 0.1),
@@ -41,7 +42,9 @@ export const THEME = {
   PRIMARY_TEXT_DARK: 'rgba(255, 255, 255, 0.9)',
   PRIMARY_TEXT_LIGHT: 'rgba(0, 0, 0, 0.9)',
   SECONDARY: '#4177a5',
+  DRAWER_WIDTH: 240,
 };
+
 // eslint-disable-next-line max-len
 export const VALID_TASK = /^[A-Za-z0-9_-]{8}[Q-T][A-Za-z0-9_-][CGKOSWaeimquy26-][A-Za-z0-9_-]{10}[AQgw]$/;
 export const TASKS_CREATE_STORAGE_KEY = 'tasks:create';
@@ -89,9 +92,14 @@ export const TASK_STATE = {
   PENDING: 'PENDING',
   UNSCHEDULED: 'UNSCHEDULED',
 };
-// 30 seconds
-// export const TASK_GROUP_POLLING_INTERVAL = 30000;
-export const TASK_GROUP_POLLING_INTERVAL = 30000;
+export const INTERACTIVE_TASK_STATUS = {
+  WAITING: 'WAITING',
+  RESOLVED: 'RESOLVED',
+  READY: 'READY',
+};
+export const TASK_GROUP_POLLING_INTERVAL = 30000; // 30 seconds
+export const INTERACTIVE_CONNECT_TASK_POLL_INTERVAL = 10000; // 10 seconds
+export const VNC_DISPLAYS_POLLING_INTERVAL = 10000; // 10 seconds
 export const INITIAL_CURSOR = '$$FIRST$$';
 export const MIMETYPE_ICONS = [
   [FilePdfIcon, ['application/pdf', 'application/postscript']],
@@ -148,3 +156,8 @@ export const TASK_ADDED_FIELDS = [
   'latestArtifacts',
   'taskActions',
 ];
+export const ACTION_CONTEXT = {
+  PROVISIONER: 'PROVISIONER',
+  WORKER_TYPE: 'WORKER_TYPE',
+  WORKER: 'WORKER',
+};

@@ -1,4 +1,4 @@
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { withRouter } from 'react-router-dom';
 import { bool } from 'prop-types';
 import Markdown from '@mozilla-frontend-infra/components/Markdown';
@@ -17,9 +17,13 @@ import LinkIcon from 'mdi-react/LinkIcon';
 import DateDistance from '../DateDistance';
 import Button from '../Button';
 import StatusLabel from '../StatusLabel';
+import DialogAction from '../DialogAction';
 import { provisioner } from '../../utils/prop-types';
+import { withAuth } from '../../utils/Auth';
+import { ACTION_CONTEXT } from '../../utils/constants';
 
 @withRouter
+@withAuth
 @withStyles(theme => ({
   actionButton: {
     marginRight: theme.spacing.unit,
@@ -54,11 +58,18 @@ import { provisioner } from '../../utils/prop-types';
     margin: 0,
     fontSize: theme.typography.body2.fontSize,
   },
+  errorPanel: {
+    width: '100%',
+  },
 }))
 /**
  * Render information in a card layout about a provisioner.
  */
 export default class ProvisionerDetailsCard extends Component {
+  static defaultProps = {
+    dense: false,
+  };
+
   static propTypes = {
     /** A GraphQL provisioner response. */
     provisioner: provisioner.isRequired,
@@ -66,16 +77,44 @@ export default class ProvisionerDetailsCard extends Component {
     dense: bool,
   };
 
-  static defaultProps = {
-    dense: false,
-  };
-
   state = {
     showDescription: false,
+    actionLoading: false,
+    dialogOpen: false,
+    dialogError: null,
+    selectedAction: null,
   };
 
-  handleToggleDescription = () => {
-    this.setState({ showDescription: !this.state.showDescription });
+  handleActionClick = selectedAction => {
+    this.setState({ dialogOpen: true, selectedAction });
+  };
+
+  handleActionError = dialogError => {
+    this.setState({ dialogError, actionLoading: false });
+  };
+
+  // TODO: Action not working.
+  handleActionSubmit = async () => {
+    const { selectedAction } = this.state;
+    const url = selectedAction.url.replace(
+      '<provisionerId>',
+      this.props.provisioner.provisionerId
+    );
+
+    this.setState({ actionLoading: true, dialogError: null });
+
+    await fetch(url, {
+      method: selectedAction.method,
+      Authorization: `Bearer ${btoa(
+        JSON.stringify(this.props.user.credentials)
+      )}`,
+    });
+
+    this.setState({ actionLoading: false, dialogError: null });
+  };
+
+  handleDialogClose = () => {
+    this.setState({ dialogOpen: false });
   };
 
   handleProvisionerChange = () => {
@@ -84,106 +123,135 @@ export default class ProvisionerDetailsCard extends Component {
     );
   };
 
-  // TODO: Handle action request
-  handleActionClick = () => {};
+  handleToggleDescription = () => {
+    this.setState({ showDescription: !this.state.showDescription });
+  };
 
   renderActions = () => {
     const { classes, provisioner } = this.props;
+    const { actionLoading } = this.state;
     const actions = provisioner.actions.filter(
-      ({ context }) => context === 'provisioner'
+      ({ context }) => context === ACTION_CONTEXT.PROVISIONER
     );
 
-    return actions.length
-      ? actions.map(action => (
-          <Tooltip
-            enterDelay={300}
-            key={action.title}
-            id={`${action.title}-tooltip`}
-            title={action.description}>
-            <Button
-              requiresAuth
-              onClick={this.handleActionClick}
-              className={classes.actionButton}
-              size="small"
-              variant="raised">
-              {action.title}
-            </Button>
-          </Tooltip>
-        ))
-      : 'n/a';
+    if (actions.length) {
+      return actions.map(action => (
+        <Tooltip
+          enterDelay={300}
+          key={action.title}
+          id={`${action.title}-tooltip`}
+          title={action.description}
+        >
+          <Button
+            requiresAuth
+            onClick={() => this.handleActionClick(action)}
+            className={classes.actionButton}
+            disabled={actionLoading}
+            size="small"
+            variant="contained"
+          >
+            {action.title}
+          </Button>
+        </Tooltip>
+      ));
+    }
+
+    return 'n/a';
   };
 
   render() {
     const { classes, provisioner, dense } = this.props;
-    const { showDescription } = this.state;
+    const {
+      showDescription,
+      dialogError,
+      dialogOpen,
+      selectedAction,
+    } = this.state;
 
     return (
-      <Card raised>
-        <CardContent classes={{ root: classes.cardContent }}>
-          <Typography variant="headline" className={classes.headline}>
-            {provisioner.provisionerId}
-          </Typography>
-          <List dense={dense}>
-            <ListItem>
-              <ListItemText
-                primary="Last Active"
-                secondary={<DateDistance from={provisioner.lastDateActive} />}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemText
-                primary="Expires"
-                secondary={<DateDistance from={provisioner.expires} />}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemText
-                primary="Stability"
-                secondary={<StatusLabel state={provisioner.stability} />}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemText
-                primary="Actions"
-                secondary={this.renderActions()}
-              />
-            </ListItem>
-            <ListItem
-              className={classes.listItemButton}
-              button
-              onClick={this.handleProvisionerChange}>
-              <ListItemText primary="Explore worker type" />
-              <LinkIcon />
-            </ListItem>
-            {provisioner.description ? (
-              <Fragment>
-                <ListItem
-                  button
-                  className={classes.listItemButton}
-                  onClick={this.handleToggleDescription}>
-                  <ListItemText primary="Description" />
-                  {showDescription ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                </ListItem>
-                <Collapse in={showDescription} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    <ListItem>
-                      <ListItemText
-                        secondary={
-                          <Markdown>{provisioner.description}</Markdown>
-                        }
-                      />
-                    </ListItem>
-                  </List>
-                </Collapse>
-              </Fragment>
-            ) : (
+      <Fragment>
+        <Card raised>
+          <CardContent classes={{ root: classes.cardContent }}>
+            <Typography variant="h5" className={classes.headline}>
+              {provisioner.provisionerId}
+            </Typography>
+            <List dense={dense}>
               <ListItem>
-                <ListItemText primary="Description" secondary="n/a" />
+                <ListItemText
+                  primary="Last Active"
+                  secondary={<DateDistance from={provisioner.lastDateActive} />}
+                />
               </ListItem>
-            )}
-          </List>
-        </CardContent>
-      </Card>
+              <ListItem>
+                <ListItemText
+                  primary="Expires"
+                  secondary={<DateDistance from={provisioner.expires} />}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Stability"
+                  secondary={<StatusLabel state={provisioner.stability} />}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Actions"
+                  secondary={this.renderActions()}
+                />
+              </ListItem>
+              <ListItem
+                className={classes.listItemButton}
+                button
+                onClick={this.handleProvisionerChange}
+              >
+                <ListItemText primary="Explore worker type" />
+                <LinkIcon />
+              </ListItem>
+              {provisioner.description ? (
+                <Fragment>
+                  <ListItem
+                    button
+                    className={classes.listItemButton}
+                    onClick={this.handleToggleDescription}
+                  >
+                    <ListItemText primary="Description" />
+                    {showDescription ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                  </ListItem>
+                  <Collapse in={showDescription} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      <ListItem>
+                        <ListItemText
+                          secondary={
+                            <Markdown>{provisioner.description}</Markdown>
+                          }
+                        />
+                      </ListItem>
+                    </List>
+                  </Collapse>
+                </Fragment>
+              ) : (
+                <ListItem>
+                  <ListItemText primary="Description" secondary="n/a" />
+                </ListItem>
+              )}
+            </List>
+          </CardContent>
+        </Card>
+        {dialogOpen && (
+          <DialogAction
+            error={dialogError}
+            open={dialogOpen}
+            title={`${selectedAction.title}?`}
+            body={selectedAction.description}
+            confirmText={selectedAction.title}
+            onSubmit={this.handleActionSubmit}
+            onError={this.handleActionError}
+            onComplete={this.handleDialogClose}
+            onClose={this.handleDialogClose}
+          />
+        )}
+      </Fragment>
     );
   }
 }

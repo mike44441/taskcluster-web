@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Switch } from 'react-router-dom';
 import RouteWithProps from '../../components/RouteWithProps';
 import loadable from '../../utils/loadable';
@@ -56,7 +56,12 @@ export default class AwsProvisioner extends Component {
           {...props}
           component={ViewWorkerType}
         />
-        <RouteWithProps path={path} {...props} component={ViewWorkerTypes} />
+        <RouteWithProps
+          path={path}
+          {...props}
+          component={ViewWorkerTypes}
+          description="Manage worker types known to the AWS Provisioner and check on the status of AWS nodes."
+        />
       </Switch>
     );
   }

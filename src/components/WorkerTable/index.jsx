@@ -1,11 +1,12 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
 import ListItemText from '@material-ui/core/ListItemText';
 import { camelCase } from 'change-case';
-import { memoizeWith } from 'ramda';
+import memoize from 'fast-memoize';
 import LinkIcon from 'mdi-react/LinkIcon';
 import { withStyles } from '@material-ui/core/styles';
 import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
@@ -39,6 +40,10 @@ import sort from '../../utils/sort';
  * Display relevant information about a worker in a table.
  */
 export default class WorkerTable extends Component {
+  static defaultProps = {
+    worker: null,
+  };
+
   static propTypes = {
     /** A GraphQL worker response. */
     worker,
@@ -49,8 +54,7 @@ export default class WorkerTable extends Component {
     sortDirection: null,
   };
 
-  getTableData = memoizeWith(
-    ({ sortBy, sortDirection }) => `${sortBy}-${sortDirection}`,
+  getTableData = memoize(
     ({ sortBy, sortDirection, worker }) => {
       const sortByProperty = camelCase(sortBy);
 
@@ -79,6 +83,9 @@ export default class WorkerTable extends Component {
 
         return sort(firstElement, secondElement);
       });
+    },
+    {
+      serializer: ({ sortBy, sortDirection }) => `${sortBy}-${sortDirection}`,
     }
   );
 
@@ -107,42 +114,47 @@ export default class WorkerTable extends Component {
               <TableCellListItem
                 button
                 component={Link}
-                to={`/tasks/${task.taskId}/runs/${task.runId}`}>
+                to={`/tasks/${task.taskId}/runs/${task.runId}`}
+              >
                 <div className={classes.taskName}>{task.name}</div>
                 <LinkIcon size={iconSize} />
               </TableCellListItem>
             </TableCell>
             <TableCell>{task.taskId}</TableCell>
-            <TableCell>
-              <TableCellListItem button>
-                <ListItemText
-                  disableTypography
-                  primary={
-                    <Typography variant="body1">
-                      <DateDistance from={task.started} />
-                    </Typography>
-                  }
-                />
-                <ContentCopyIcon size={iconSize} />
-              </TableCellListItem>
-            </TableCell>
-            <TableCell>
-              {task.resolved ? (
+            <CopyToClipboard text={task.started}>
+              <TableCell>
                 <TableCellListItem button>
                   <ListItemText
                     disableTypography
                     primary={
-                      <Typography variant="body1">
-                        <DateDistance from={task.resolved} />
+                      <Typography>
+                        <DateDistance from={task.started} />
                       </Typography>
                     }
                   />
                   <ContentCopyIcon size={iconSize} />
                 </TableCellListItem>
-              ) : (
-                <Typography variant="body1">n/a</Typography>
-              )}
-            </TableCell>
+              </TableCell>
+            </CopyToClipboard>
+            <CopyToClipboard text={task.resolved}>
+              <TableCell>
+                {task.resolved ? (
+                  <TableCellListItem button>
+                    <ListItemText
+                      disableTypography
+                      primary={
+                        <Typography>
+                          <DateDistance from={task.resolved} />
+                        </Typography>
+                      }
+                    />
+                    <ContentCopyIcon size={iconSize} />
+                  </TableCellListItem>
+                ) : (
+                  <Typography>n/a</Typography>
+                )}
+              </TableCell>
+            </CopyToClipboard>
           </TableRow>
         )}
         headers={['State', 'Name', 'Task ID', 'Started', 'Resolved']}

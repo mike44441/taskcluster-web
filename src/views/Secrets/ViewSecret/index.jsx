@@ -1,10 +1,12 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
+import Typography from '@material-ui/core/Typography';
 import Dashboard from '../../../components/Dashboard';
 import SecretForm from '../../../components/SecretForm';
+import HelpView from '../../../components/HelpView';
 import formatError from '../../../utils/formatError';
 import secretQuery from './secret.graphql';
 import createSecretQuery from './createSecret.graphql';
@@ -26,6 +28,23 @@ export default class ViewSecret extends Component {
     loading: false,
     // Mutation errors
     error: null,
+  };
+
+  handleDeleteSecret = async name => {
+    this.setState({ error: null, loading: true });
+
+    try {
+      await this.props.client.mutate({
+        mutation: deleteSecretQuery,
+        variables: { name },
+      });
+
+      this.setState({ error: null, loading: false });
+
+      this.props.history.push(`/secrets`);
+    } catch (error) {
+      this.setState({ error, loading: false });
+    }
   };
 
   handleSaveSecret = async (name, secret) => {
@@ -52,29 +71,22 @@ export default class ViewSecret extends Component {
     }
   };
 
-  handleDeleteSecret = async name => {
-    this.setState({ error: null, loading: true });
-
-    try {
-      await this.props.client.mutate({
-        mutation: deleteSecretQuery,
-        variables: { name },
-      });
-
-      this.setState({ error: null, loading: false });
-
-      this.props.history.push(`/secrets`);
-    } catch (error) {
-      this.setState({ error, loading: false });
-    }
-  };
-
   render() {
     const { loading, error } = this.state;
-    const { isNewSecret, data } = this.props;
+    const { description, isNewSecret, data } = this.props;
 
     return (
-      <Dashboard title="Secrets">
+      <Dashboard
+        title="Secrets"
+        helpView={
+          <HelpView description={description}>
+            <Typography>
+              Secrets starting with <code>garbage/</code> are visible to just
+              about everybody. Use them to experiment, but not for real secrets!
+            </Typography>
+          </HelpView>
+        }
+      >
         {error && <ErrorPanel error={formatError(error)} />}
         {isNewSecret ? (
           <SecretForm

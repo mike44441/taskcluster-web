@@ -1,10 +1,9 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { arrayOf, func, shape, string } from 'prop-types';
 import { Link } from 'react-router-dom';
 import {
   uniq,
   flatten,
-  memoizeWith,
   filter,
   pipe,
   path,
@@ -14,6 +13,7 @@ import {
   contains,
   sort as rSort,
 } from 'ramda';
+import memoize from 'fast-memoize';
 import { withStyles } from '@material-ui/core/styles';
 import ListItemText from '@material-ui/core/ListItemText';
 import TableRow from '@material-ui/core/TableRow';
@@ -37,6 +37,13 @@ const sorted = pipe(
   },
 })
 export default class ClientScopesTable extends Component {
+  static defaultProps = {
+    searchTerm: null,
+    selectedScope: null,
+    searchMode: null,
+    searchProperty: 'expandedScopes',
+  };
+
   static propTypes = {
     /** Callback function fired when a page is changed. */
     onPageChange: func.isRequired,
@@ -58,25 +65,11 @@ export default class ClientScopesTable extends Component {
     selectedScope: string,
   };
 
-  static defaultProps = {
-    searchTerm: null,
-    selectedScope: null,
-    searchMode: null,
-    searchProperty: 'expandedScopes',
-  };
-
   // If the prop `selectedScope` is set, clients will be a list of client IDs.
   // Else, clients will be a list of scopes.
   clients = null;
 
-  createSortedClientsConnection = memoizeWith(
-    (clientsConnection, searchMode, selectedScope, searchProperty) => {
-      const ids = sorted(clientsConnection.edges);
-
-      return `${ids.join(
-        '-'
-      )}-${searchMode}-${selectedScope}-${searchProperty}`;
-    },
+  createSortedClientsConnection = memoize(
     (clientsConnection, searchMode, selectedScope, searchProperty) => {
       const match = scopeMatch(searchMode, selectedScope);
       const extractExpandedScopes = pipe(
@@ -104,6 +97,20 @@ export default class ClientScopesTable extends Component {
       }
 
       return clientsConnection;
+    },
+    {
+      serializer: ([
+        clientsConnection,
+        searchMode,
+        selectedScope,
+        searchProperty,
+      ]) => {
+        const ids = sorted(clientsConnection.edges);
+
+        return `${ids.join(
+          '-'
+        )}-${searchMode}-${selectedScope}-${searchProperty}`;
+      },
     }
   );
 
@@ -127,7 +134,8 @@ export default class ClientScopesTable extends Component {
                 selectedScope
                   ? `/auth/clients/${encodeURIComponent(node)}`
                   : `/auth/scopes/${encodeURIComponent(node)}`
-              }>
+              }
+            >
               <ListItemText disableTypography primary={<code>{node}</code>} />
               <LinkIcon size={16} />
             </TableCellListItem>

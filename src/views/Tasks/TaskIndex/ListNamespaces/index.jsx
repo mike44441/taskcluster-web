@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { graphql, compose, withApollo } from 'react-apollo';
 import dotProp from 'dot-prop-immutable';
 import { defaultTo } from 'ramda';
@@ -7,6 +7,7 @@ import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Typography from '@material-ui/core/Typography';
 import Dashboard from '../../../../components/Dashboard';
+import HelpView from '../../../../components/HelpView';
 import IndexNamespacesTable from '../../../../components/IndexNamespacesTable';
 import IndexTaskNamespaceTable from '../../../../components/IndexTaskNamespaceTable';
 import { VIEW_NAMESPACES_PAGE_SIZE } from '../../../../utils/constants';
@@ -126,6 +127,7 @@ export default class ListNamespaces extends Component {
         loading: taskNamespaceLoading,
         error: taskNamespaceError,
       },
+      description,
     } = this.props;
     const hasIndexedTasks =
       taskNamespace && taskNamespace.edges && taskNamespace.edges.length > 0;
@@ -134,7 +136,10 @@ export default class ListNamespaces extends Component {
     const loading = namespacesLoading || taskNamespaceLoading;
 
     return (
-      <Dashboard title="Index Browser">
+      <Dashboard
+        title="Index Browser"
+        helpView={<HelpView description={description} />}
+      >
         <Fragment>
           {loading && <Spinner loading />}
           {namespacesError &&
@@ -153,7 +158,7 @@ export default class ListNamespaces extends Component {
           {!loading &&
             hasNamespaces && (
               <Fragment>
-                <Typography variant="subheading">Namespaces</Typography>
+                <Typography variant="subtitle1">Namespaces</Typography>
                 <IndexNamespacesTable
                   onPageChange={this.handleNamespacesPageChange}
                   connection={namespaces}
@@ -163,7 +168,7 @@ export default class ListNamespaces extends Component {
           {!loading &&
             hasIndexedTasks && (
               <Fragment>
-                <Typography variant="subheading">Indexed Tasks</Typography>
+                <Typography variant="subtitle1">Indexed Tasks</Typography>
                 <IndexTaskNamespaceTable
                   onTaskNamespaceClick={this.handleTaskNamespaceClick}
                   onPageChange={this.handleTaskNamespacePageChange}

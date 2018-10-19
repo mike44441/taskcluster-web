@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
@@ -9,6 +9,7 @@ import ListItemText from '@material-ui/core/ListItemText';
 import ListSubheader from '@material-ui/core/ListSubheader';
 import LinkIcon from 'mdi-react/LinkIcon';
 import Dashboard from '../../../components/Dashboard';
+import HelpView from '../../../components/HelpView';
 import Search from '../../../components/Search';
 import db from '../../../utils/db';
 
@@ -46,18 +47,20 @@ export default class NoTaskGroup extends Component {
   };
 
   render() {
-    const { classes } = this.props;
+    const { classes, description } = this.props;
     const { taskGroupSearch, recentTaskGroups } = this.state;
 
     return (
       <Dashboard
+        helpView={<HelpView description={description} />}
         search={
           <Search
             value={taskGroupSearch}
             onChange={this.handleTaskGroupSearchChange}
             onSubmit={this.handleTaskGroupSearchSubmit}
           />
-        }>
+        }
+      >
         <Typography className={classes.infoText}>
           Enter a task group ID in the search box
         </Typography>
@@ -69,14 +72,16 @@ export default class NoTaskGroup extends Component {
                 <ListSubheader component="div">
                   Recent Task Groups
                 </ListSubheader>
-              }>
+              }
+            >
               {recentTaskGroups.map(({ taskGroupId }) => (
                 <ListItem
                   button
                   className={classes.listItemButton}
                   component={Link}
                   to={`/tasks/groups/${taskGroupId}`}
-                  key={taskGroupId}>
+                  key={taskGroupId}
+                >
                   <ListItemText primary={taskGroupId} />
                   <LinkIcon />
                 </ListItem>

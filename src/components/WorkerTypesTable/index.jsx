@@ -1,5 +1,6 @@
-import { Component, Fragment } from 'react';
+import React, { Component, Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import Markdown from '@mozilla-frontend-infra/components/Markdown';
 import { withStyles } from '@material-ui/core/styles';
 import TableCell from '@material-ui/core/TableCell';
@@ -11,8 +12,9 @@ import Typography from '@material-ui/core/Typography';
 import Drawer from '@material-ui/core/Drawer';
 import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import InformationVariantIcon from 'mdi-react/InformationVariantIcon';
-import { string, func, array, shape, arrayOf } from 'prop-types';
-import { memoizeWith, pipe, map, sort as rSort } from 'ramda';
+import { func, array, shape, arrayOf } from 'prop-types';
+import { pipe, map, sort as rSort } from 'ramda';
+import memoize from 'fast-memoize';
 import { camelCase } from 'change-case';
 import LinkIcon from 'mdi-react/LinkIcon';
 import Button from '../Button';
@@ -55,11 +57,11 @@ const sorted = pipe(
  * Display relevant information about worker types in a table.
  */
 export default class WorkerTypesTable extends Component {
-  workerTypes = null;
+  static defaultProps = {
+    awsProvisionerWorkerTypeSummaries: null,
+  };
 
   static propTypes = {
-    /** Provisioner identifier */
-    provisionerId: string.isRequired,
     /** Callback function fired when a page is changed. */
     onPageChange: func.isRequired,
     /** Worker Types GraphQL PageConnection instance. */
@@ -74,10 +76,6 @@ export default class WorkerTypesTable extends Component {
     awsProvisionerWorkerTypeSummaries: arrayOf(awsProvisionerWorkerTypeSummary),
   };
 
-  static defaultProps = {
-    awsProvisionerWorkerTypeSummaries: null,
-  };
-
   state = {
     sortBy: null,
     sortDirection: null,
@@ -85,43 +83,7 @@ export default class WorkerTypesTable extends Component {
     drawerWorkerType: null,
   };
 
-  handleDrawerClose = () => {
-    this.setState({
-      drawerOpen: false,
-      drawerWorkerType: null,
-    });
-  };
-
-  handleDrawerOpen = ({ target: { name } }) =>
-    memoizeWith(
-      name => name,
-      name =>
-        this.setState({
-          drawerOpen: true,
-          drawerWorkerType: this.workerTypes.edges.find(
-            ({ node }) => node.workerType === name
-          ).node,
-        })
-    )(name);
-
-  handleHeaderClick = sortBy => {
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
-
-  createSortedWorkerTypesConnection = memoizeWith(
-    (
-      workerTypesConnection,
-      awsProvisionerWorkerTypeSummaries,
-      sortBy,
-      sortDirection
-    ) => {
-      const ids = sorted(workerTypesConnection.edges);
-
-      return `${ids.join('-')}-${sortBy}-${sortDirection}`;
-    },
+  createSortedWorkerTypesConnection = memoize(
     (
       workerTypesConnection,
       awsProvisionerWorkerTypeSummaries,
@@ -154,8 +116,51 @@ export default class WorkerTypesTable extends Component {
           return sort(firstElement, secondElement);
         }),
       };
+    },
+    {
+      serializer: ([
+        workerTypesConnection,
+        // eslint-disable-next-line no-unused-vars
+        awsProvisionerWorkerTypeSummaries,
+        sortBy,
+        sortDirection,
+      ]) => {
+        const ids = sorted(workerTypesConnection.edges);
+
+        return `${ids.join('-')}-${sortBy}-${sortDirection}`;
+      },
     }
   );
+
+  workerTypes = null;
+
+  handleDrawerClose = () => {
+    this.setState({
+      drawerOpen: false,
+      drawerWorkerType: null,
+    });
+  };
+
+  handleDrawerOpen = ({ target: { name } }) =>
+    memoize(
+      name =>
+        this.setState({
+          drawerOpen: true,
+          drawerWorkerType: this.workerTypes.edges.find(
+            ({ node }) => node.workerType === name
+          ).node,
+        }),
+      {
+        serializer: name => name,
+      }
+    )(name);
+
+  handleHeaderClick = sortBy => {
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
 
   render() {
     const {
@@ -207,7 +212,8 @@ export default class WorkerTypesTable extends Component {
                   className={classes.infoButton}
                   size="small"
                   name={workerType.workerType}
-                  onClick={this.handleDrawerOpen}>
+                  onClick={this.handleDrawerOpen}
+                >
                   <InformationVariantIcon size={iconSize} />
                 </Button>
                 <TableCellListItem
@@ -215,14 +221,11 @@ export default class WorkerTypesTable extends Component {
                   component={Link}
                   to={`/provisioners/${workerType.provisionerId}/worker-types/${
                     workerType.workerType
-                  }`}>
+                  }`}
+                >
                   <ListItemText
                     disableTypography
-                    primary={
-                      <Typography variant="body1">
-                        {workerType.workerType}
-                      </Typography>
-                    }
+                    primary={<Typography>{workerType.workerType}</Typography>}
                   />
                   <LinkIcon size={iconSize} />
                 </TableCellListItem>
@@ -230,19 +233,21 @@ export default class WorkerTypesTable extends Component {
               <TableCell>
                 <StatusLabel state={workerType.stability} />
               </TableCell>
-              <TableCell>
-                <TableCellListItem button>
-                  <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography variant="body1">
-                        <DateDistance from={workerType.lastDateActive} />
-                      </Typography>
-                    }
-                  />
-                  <ContentCopyIcon size={iconSize} />
-                </TableCellListItem>
-              </TableCell>
+              <CopyToClipboard text={workerType.lastDateActive}>
+                <TableCell>
+                  <TableCellListItem button>
+                    <ListItemText
+                      disableTypography
+                      primary={
+                        <Typography>
+                          <DateDistance from={workerType.lastDateActive} />
+                        </Typography>
+                      }
+                    />
+                    <ContentCopyIcon size={iconSize} />
+                  </TableCellListItem>
+                </TableCell>
+              </CopyToClipboard>
               <TableCell>{workerType.pendingTasks}</TableCell>
               {'runningCapacity' in workerType && (
                 <TableCell>{workerType.runningCapacity}</TableCell>
@@ -256,9 +261,10 @@ export default class WorkerTypesTable extends Component {
         <Drawer
           anchor="right"
           open={drawerOpen}
-          onClose={this.handleDrawerClose}>
+          onClose={this.handleDrawerClose}
+        >
           <div className={classes.metadataContainer}>
-            <Typography variant="headline" className={classes.headline}>
+            <Typography variant="h5" className={classes.headline}>
               {drawerWorkerType && drawerWorkerType.workerType}
             </Typography>
             <List>

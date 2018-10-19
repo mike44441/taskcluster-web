@@ -1,5 +1,5 @@
 import { hot } from 'react-hot-loader';
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { graphql } from 'react-apollo';
 import { prop, map } from 'ramda';
 import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
@@ -9,6 +9,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import MuiTreeView from 'material-ui-treeview';
 import PlusIcon from 'mdi-react/PlusIcon';
 import Dashboard from '../../../components/Dashboard';
+import HelpView from '../../../components/HelpView';
 import Search from '../../../components/Search';
 import Button from '../../../components/Button';
 import hooksQuery from './hooks.graphql';
@@ -29,6 +30,10 @@ export default class ListHooks extends Component {
     hookSearch: '',
   };
 
+  handleCreateHook = () => {
+    this.props.history.push('/hooks/create');
+  };
+
   handleHookSearchChange = e => {
     this.setState({ hookSearch: e.target.value || '' });
   };
@@ -37,13 +42,10 @@ export default class ListHooks extends Component {
     this.props.history.push(`/hooks/${parent.value}/${leaf}`);
   };
 
-  handleCreateHook = () => {
-    this.props.history.push('/hooks/create');
-  };
-
   render() {
     const {
       classes,
+      description,
       data: { loading, error, hookGroups },
     } = this.props;
     const { hookSearch } = this.state;
@@ -57,13 +59,15 @@ export default class ListHooks extends Component {
     return (
       <Dashboard
         title="Hooks"
+        helpView={<HelpView description={description} />}
         search={
           <Search
             value={hookSearch}
             placeholder="Hook contains"
             onChange={this.handleHookSearchChange}
           />
-        }>
+        }
+      >
         {!hookGroups && loading && <Spinner loading />}
         {error && error.graphQLErrors && <ErrorPanel error={error} />}
         {hookGroups && (
@@ -79,7 +83,8 @@ export default class ListHooks extends Component {
             color="secondary"
             variant="fab"
             onClick={this.handleCreateHook}
-            className={classes.actionButton}>
+            className={classes.actionButton}
+          >
             <PlusIcon />
           </Button>
         </Tooltip>

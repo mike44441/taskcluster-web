@@ -1,14 +1,15 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { func, shape } from 'prop-types';
-import { memoizeWith, pipe, map, sort as rSort } from 'ramda';
+import { pipe, map, sort as rSort } from 'ramda';
+import memoize from 'fast-memoize';
 import { withStyles } from '@material-ui/core/styles';
 import TableCell from '@material-ui/core/TableCell';
 import ListItemText from '@material-ui/core/ListItemText';
 import Typography from '@material-ui/core/Typography';
 import TableRow from '@material-ui/core/TableRow';
 import LinkIcon from 'mdi-react/LinkIcon';
-import TableCellListItem from '../../components/TableCellListItem';
+import TableCellListItem from '../TableCellListItem';
 import ConnectionDataTable from '../ConnectionDataTable';
 import { VIEW_SECRETS_PAGE_SIZE } from '../../utils/constants';
 import sort from '../../utils/sort';
@@ -43,27 +44,7 @@ export default class SecretsTable extends Component {
     sortDirection: null,
   };
 
-  handleHeaderClick = sortBy => {
-    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
-    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
-
-    this.setState({ sortBy, sortDirection });
-  };
-
-  valueFromNode(node) {
-    const mapping = {
-      'Secret ID': node.name,
-    };
-
-    return mapping[this.state.sortBy];
-  }
-
-  createSortedSecretsConnection = memoizeWith(
-    (secretsConnection, sortBy, sortDirection) => {
-      const ids = sorted(secretsConnection.edges);
-
-      return `${ids.join('-')}-${sortBy}-${sortDirection}`;
-    },
+  createSortedSecretsConnection = memoize(
     (secretsConnection, sortBy, sortDirection) => {
       if (!sortBy) {
         return secretsConnection;
@@ -84,8 +65,30 @@ export default class SecretsTable extends Component {
           return sort(firstElement, secondElement);
         }),
       };
+    },
+    {
+      serializer: ([secretsConnection, sortBy, sortDirection]) => {
+        const ids = sorted(secretsConnection.edges);
+
+        return `${ids.join('-')}-${sortBy}-${sortDirection}`;
+      },
     }
   );
+
+  handleHeaderClick = sortBy => {
+    const toggled = this.state.sortDirection === 'desc' ? 'asc' : 'desc';
+    const sortDirection = this.state.sortBy === sortBy ? toggled : 'desc';
+
+    this.setState({ sortBy, sortDirection });
+  };
+
+  valueFromNode(node) {
+    const mapping = {
+      'Secret ID': node.name,
+    };
+
+    return mapping[this.state.sortBy];
+  }
 
   render() {
     const { onPageChange, classes, secretsConnection } = this.props;
@@ -114,10 +117,11 @@ export default class SecretsTable extends Component {
                 dense
                 button
                 component={Link}
-                to={`/secrets/${encodeURIComponent(name)}`}>
+                to={`/secrets/${encodeURIComponent(name)}`}
+              >
                 <ListItemText
                   disableTypography
-                  primary={<Typography variant="body1">{name}</Typography>}
+                  primary={<Typography>{name}</Typography>}
                 />
                 <LinkIcon size={iconSize} />
               </TableCellListItem>

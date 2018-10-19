@@ -7,3 +7,5 @@ node_modules
 .env
 /styleguide
 .coverage
+.DS_Store
+.eslintcache
