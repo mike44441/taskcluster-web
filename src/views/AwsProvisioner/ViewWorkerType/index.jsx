@@ -1,7 +1,6 @@
 import { hot } from 'react-hot-loader';
 import React, { Component } from 'react';
 import { graphql, withApollo } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import Tabs from '@material-ui/core/Tabs';
@@ -11,10 +10,11 @@ import DeleteEmptyIcon from 'mdi-react/DeleteEmptyIcon';
 import Dashboard from '../../../components/Dashboard';
 import Button from '../../../components/Button';
 import AwsProvisionerErrorsTable from '../../../components/AwsProvisionerErrorsTable';
-import AwsProvisionerHealthTable from '../../../components/AwsProvisionerHealthTable';
 import AwsProvisionerWorkerTypeStatus from '../../../components/AwsProvisionerWorkerTypeStatus';
+import Snackbar from '../../../components/Snackbar';
 import Ec2ResourcesTable from '../../../components/Ec2ResourcesTable';
 import formatError from '../../../utils/formatError';
+import ErrorPanel from '../../../components/ErrorPanel';
 import workerTypeQuery from './workerType.graphql';
 import terminateInstanceQuery from './terminateInstance.graphql';
 import terminateWorkerTypeQuery from './terminateWorkerType.graphql';
@@ -43,6 +43,8 @@ export default class ViewWorkerType extends Component {
   state = {
     currentTab: 0,
     actionLoading: false,
+    showTerminateAllInstancesSnackbar: false,
+    showTerminateInstanceSnackbar: false,
   };
 
   handleTabChange = (e, currentTab) => {
@@ -65,7 +67,10 @@ export default class ViewWorkerType extends Component {
         variables: { workerType },
       });
 
-      this.setState({ actionLoading: false });
+      this.setState({
+        actionLoading: false,
+        showTerminateAllInstancesSnackbar: true,
+      });
     } catch (error) {
       this.setState({ actionLoading: false, error: formatError(error) });
     }
@@ -80,10 +85,20 @@ export default class ViewWorkerType extends Component {
         variables: { region, instanceId: id },
       });
 
-      this.setState({ actionLoading: false });
+      this.setState({
+        actionLoading: false,
+        showTerminateInstanceSnackbar: true,
+      });
     } catch (error) {
       this.setState({ actionLoading: false, error: formatError(error) });
     }
+  };
+
+  handleSnackbarClose = () => {
+    this.setState({
+      showTerminateAllInstancesSnackbar: false,
+      showTerminateInstanceSnackbar: false,
+    });
   };
 
   render() {
@@ -92,7 +107,6 @@ export default class ViewWorkerType extends Component {
       data: {
         awsProvisionerWorkerTypeState,
         awsProvisionerWorkerTypeErrors,
-        awsProvisionerWorkerTypeHealth,
         awsProvisionerWorkerType,
         loading,
         error,
@@ -101,16 +115,21 @@ export default class ViewWorkerType extends Component {
         params: { workerType },
       },
     } = this.props;
-    const { currentTab, actionLoading } = this.state;
+    const {
+      currentTab,
+      actionLoading,
+      showTerminateAllInstancesSnackbar,
+      showTerminateInstanceSnackbar,
+    } = this.state;
+    const FIVE_SECONDS = 5000;
 
     return (
       <Dashboard title={`AWS Provisioner ${workerType}`}>
-        {error && error.graphQLErrors && <ErrorPanel error={error} />}
-        {this.state.error && <ErrorPanel error={this.state.error} />}
+        <ErrorPanel error={error} />
+        <ErrorPanel error={this.state.error} />
         <Tabs fullWidth value={currentTab} onChange={this.handleTabChange}>
           <Tab label="Status" />
-          <Tab label="Errors" />
-          <Tab label="Health" />
+          <Tab label="Recent Provisioning Errors" />
           <Tab label="EC2 Resources" />
         </Tabs>
         {loading && <Spinner className={classes.spinner} loading />}
@@ -132,13 +151,6 @@ export default class ViewWorkerType extends Component {
         {!error &&
           !loading &&
           currentTab === 2 && (
-            <AwsProvisionerHealthTable
-              healthData={awsProvisionerWorkerTypeHealth}
-            />
-          )}
-        {!error &&
-          !loading &&
-          currentTab === 3 && (
             <Ec2ResourcesTable
               onTerminateInstance={this.handleTerminateInstance}
               workerType={awsProvisionerWorkerType}
@@ -148,7 +160,7 @@ export default class ViewWorkerType extends Component {
           )}
         {!error &&
           !loading &&
-          currentTab === 3 && (
+          currentTab === 2 && (
             <Tooltip title="Terminate All">
               <div className={classes.fab}>
                 <Button
@@ -159,13 +171,24 @@ export default class ViewWorkerType extends Component {
                   requiresAuth
                   onClick={this.handleTerminateAllInstances}
                   variant="fab"
-                  className={classes.terminateButton}
-                >
+                  className={classes.terminateButton}>
                   <DeleteEmptyIcon />
                 </Button>
               </div>
             </Tooltip>
           )}
+        <Snackbar
+          open={showTerminateAllInstancesSnackbar}
+          onClose={this.handleSnackbarClose}
+          autoHideDuration={FIVE_SECONDS}
+          message="A request has been sent to terminate all instances."
+        />
+        <Snackbar
+          open={showTerminateInstanceSnackbar}
+          onClose={this.handleSnackbarClose}
+          autoHideDuration={FIVE_SECONDS}
+          message="A request has been sent to terminate the instance."
+        />
       </Dashboard>
     );
   }

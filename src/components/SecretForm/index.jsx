@@ -157,8 +157,7 @@ export default class SecretForm extends Component {
             />
           </ListItem>
           <List
-            subheader={<ListSubheader>Secret Value (in YAML)</ListSubheader>}
-          >
+            subheader={<ListSubheader>Secret Value (in YAML)</ListSubheader>}>
             <ListItem className={classes.editorListItem}>
               <CodeEditor
                 onChange={this.handleEditorChange}
@@ -179,8 +178,7 @@ export default class SecretForm extends Component {
                 variant="fab"
                 className={classes.saveIcon}
                 disabled={loading || !this.validSecret()}
-                onClick={this.handleSaveSecret}
-              >
+                onClick={this.handleSaveSecret}>
                 <ContentSaveIcon />
               </Button>
             </div>
@@ -192,7 +190,7 @@ export default class SecretForm extends Component {
               tooltipOpen
               icon={<ContentSaveIcon />}
               onClick={this.handleSaveSecret}
-              classes={{ button: classes.saveIcon }}
+              className={classes.saveIcon}
               tooltipTitle="Save Secret"
               ButtonProps={{
                 disabled: loading || !this.validSecret(),
@@ -203,7 +201,7 @@ export default class SecretForm extends Component {
               tooltipOpen
               icon={<DeleteIcon />}
               onClick={this.handleDeleteSecret}
-              classes={{ button: classes.deleteIcon }}
+              className={classes.deleteIcon}
               tooltipTitle="Delete Secret"
               ButtonProps={{
                 disabled: loading,

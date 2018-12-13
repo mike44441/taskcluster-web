@@ -11,7 +11,6 @@ import {
   addMilliseconds,
   addHours,
 } from 'date-fns';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
 import { withStyles } from '@material-ui/core/styles';
 import Switch from '@material-ui/core/Switch';
@@ -20,10 +19,12 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import PlusIcon from 'mdi-react/PlusIcon';
 import RotateLeftIcon from 'mdi-react/RotateLeftIcon';
 import ClockOutlineIcon from 'mdi-react/ClockOutlineIcon';
+import Tooltip from '@material-ui/core/Tooltip';
 import SpeedDial from '../../../components/SpeedDial';
 import SpeedDialAction from '../../../components/SpeedDialAction';
 import HelpView from '../../../components/HelpView';
 import Dashboard from '../../../components/Dashboard';
+import ErrorPanel from '../../../components/ErrorPanel';
 import { nice } from '../../../utils/slugid';
 import {
   TASKS_CREATE_STORAGE_KEY,
@@ -31,6 +32,7 @@ import {
 } from '../../../utils/constants';
 import urls from '../../../utils/urls';
 import createTaskQuery from '../createTask.graphql';
+import Button from '../../../components/Button';
 
 const defaultTask = {
   provisionerId: 'aws-provisioner-v1',
@@ -60,6 +62,10 @@ const defaultTask = {
 @withStyles(theme => ({
   createIcon: {
     ...theme.mixins.successIcon,
+    ...theme.mixins.fab,
+    position: 'fixed',
+    bottom: theme.spacing.double,
+    right: theme.spacing.unit * 11,
   },
 }))
 export default class CreateTask extends Component {
@@ -241,8 +247,7 @@ export default class CreateTask extends Component {
               <a
                 href={urls.docs('/')}
                 target="_blank"
-                rel="noopener noreferrer"
-              >
+                rel="noopener noreferrer">
                 documentation
               </a>
               . When you submit a task here, you will be taken to{' '}
@@ -253,14 +258,13 @@ export default class CreateTask extends Component {
               variations.
             </Typography>
           </HelpView>
-        }
-      >
+        }>
         <Fragment>
           {error ? (
             <ErrorPanel error={error} />
           ) : (
             <Fragment>
-              {createdTaskError && <ErrorPanel error={createdTaskError} />}
+              <ErrorPanel error={createdTaskError} />
               <FormControlLabel
                 control={
                   <Switch
@@ -277,26 +281,22 @@ export default class CreateTask extends Component {
                 value={task || ''}
                 onChange={this.handleTaskChange}
               />
-              <SpeedDial>
-                <SpeedDialAction
+              <Tooltip title="Create Task">
+                <Button
                   requiresAuth
-                  tooltipOpen
-                  icon={<PlusIcon />}
-                  onClick={this.handleCreateTask}
-                  tooltipTitle="Create Task"
-                  classes={{ button: classes.createIcon }}
-                  ButtonProps={{
-                    disabled: !task || invalid || loading,
-                  }}
-                />
+                  disabled={!task || invalid || loading}
+                  variant="fab"
+                  className={classes.createIcon}
+                  onClick={this.handleCreateTask}>
+                  <PlusIcon />
+                </Button>
+              </Tooltip>
+              <SpeedDial>
                 <SpeedDialAction
                   tooltipOpen
                   icon={<RotateLeftIcon />}
                   onClick={this.handleResetEditor}
                   tooltipTitle="Reset Editor"
-                  ButtonProps={{
-                    color: 'secondary',
-                  }}
                 />
                 <SpeedDialAction
                   tooltipOpen
@@ -304,7 +304,6 @@ export default class CreateTask extends Component {
                   onClick={this.handleUpdateTimestamps}
                   tooltipTitle="Update Timestamps"
                   ButtonProps={{
-                    color: 'secondary',
                     disabled: !task || invalid,
                   }}
                 />

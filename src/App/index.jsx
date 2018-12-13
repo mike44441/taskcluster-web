@@ -21,6 +21,7 @@ import FontStager from '../components/FontStager';
 import Main from './Main';
 import { ToggleThemeContext } from '../utils/ToggleTheme';
 import { AuthContext } from '../utils/Auth';
+import db from '../utils/db';
 import reportError from '../utils/reportError';
 import theme from '../theme';
 import introspectionQueryResultData from '../fragments/fragmentTypes.json';
@@ -38,6 +39,18 @@ export default class App extends Component {
   persistence = new CachePersistor({
     cache: this.cache,
     storage,
+  });
+
+  httpLink = new HttpLink({
+    uri: process.env.GRAPHQL_ENDPOINT,
+  });
+
+  wsLink = new WebSocketLink({
+    uri: process.env.GRAPHQL_SUBSCRIPTION_ENDPOINT,
+    options: {
+      reconnect: true,
+      lazy: true,
+    },
   });
 
   apolloClient = new ApolloClient({
@@ -64,13 +77,8 @@ export default class App extends Component {
 
           return kind === 'OperationDefinition' && operation === 'subscription';
         },
-        new WebSocketLink({
-          uri: process.env.GRAPHQL_SUBSCRIPTION_ENDPOINT,
-          options: {
-            reconnect: true,
-          },
-        }),
-        new HttpLink()
+        this.wsLink,
+        this.httpLink
       ),
     ]),
   });
@@ -114,6 +122,18 @@ export default class App extends Component {
     this.state = state;
   }
 
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  async componentDidMount() {
+    const themeType = await db.userPreferences.get('theme');
+
+    if (themeType === 'light') {
+      this.setState({ theme: theme.lightTheme });
+    }
+  }
+
   authorize = async (user, persist = true) => {
     if (persist) {
       localStorage.setItem(AUTH_STORE, JSON.stringify(user));
@@ -146,11 +166,16 @@ export default class App extends Component {
           ? theme.lightTheme
           : theme.darkTheme,
     });
+    const newTheme =
+      this.state.theme && this.state.theme.palette.type === 'dark'
+        ? theme.lightTheme
+        : theme.darkTheme;
+
+    db.userPreferences.put(newTheme.palette.type, 'theme');
+    this.setState({ theme: newTheme });
   };
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ error });
-
     reportError(error, errorInfo);
   }
 

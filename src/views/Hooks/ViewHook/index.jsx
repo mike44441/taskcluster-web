@@ -1,10 +1,10 @@
 import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Dashboard from '../../../components/Dashboard';
 import HookForm from '../../../components/HookForm';
+import ErrorPanel from '../../../components/ErrorPanel';
 import hookQuery from './hook.graphql';
 import createHookQuery from './createHook.graphql';
 import deleteHookQuery from './deleteHook.graphql';
@@ -18,7 +18,7 @@ import triggerHookQuery from './triggerHook.graphql';
   options: ({ match: { params } }) => ({
     variables: {
       hookGroupId: params.hookGroupId,
-      hookId: params.hookId,
+      hookId: decodeURIComponent(params.hookId),
     },
   }),
 })
@@ -125,9 +125,8 @@ export default class ViewHook extends Component {
         ) : (
           <Fragment>
             {!data.hook && data.loading && <Spinner loading />}
-            {error && <ErrorPanel error={error} />}
-            {data.error &&
-              data.error.graphQLErrors && <ErrorPanel error={data.error} />}
+            <ErrorPanel error={error} />
+            {data && <ErrorPanel error={data.error} />}
             {data.hook && (
               <HookForm
                 error={error}

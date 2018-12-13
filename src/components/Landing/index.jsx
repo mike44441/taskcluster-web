@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
 import { node, string } from 'prop-types';
 import classNames from 'classnames';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import PageTitle from '../PageTitle';
-import reportError from '../../utils/reportError';
+import Helmet from '../Helmet';
+import ErrorPanel from '../ErrorPanel';
 
 @withStyles(theme => ({
   root: {
@@ -14,7 +14,7 @@ import reportError from '../../utils/reportError';
     overflow: 'hidden',
     position: 'relative',
     display: 'flex',
-    width: '100vw',
+    width: '100%',
   },
   content: {
     flexGrow: 1,
@@ -43,15 +43,13 @@ export default class Landing extends Component {
     title: string,
   };
 
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
   state = {
     error: null,
   };
-
-  componentDidCatch(error, errorInfo) {
-    this.setState({ error });
-
-    reportError(error, errorInfo);
-  }
 
   render() {
     const { classes, className, children, title, ...props } = this.props;
@@ -59,6 +57,7 @@ export default class Landing extends Component {
 
     return (
       <div className={classes.root}>
+        <Helmet />
         <PageTitle>{title}</PageTitle>
         <main className={classNames(classes.content, className)} {...props}>
           {error ? <ErrorPanel error={error} /> : children}

@@ -7,10 +7,8 @@ import { camelCase } from 'change-case/change-case';
 import { withStyles } from '@material-ui/core/styles';
 import TableRow from '@material-ui/core/TableRow';
 import TableCell from '@material-ui/core/TableCell';
-import ListItemText from '@material-ui/core/ListItemText';
 import Typography from '@material-ui/core/Typography';
 import LinkIcon from 'mdi-react/LinkIcon';
-import TableCellListItem from '../TableCellListItem';
 import { role } from '../../utils/prop-types';
 import sort from '../../utils/sort';
 import DataTable from '../DataTable';
@@ -20,11 +18,18 @@ const sorted = pipe(
   map(({ roleId }) => roleId)
 );
 
-@withStyles({
-  listItemCell: {
-    width: '100%',
+@withStyles(theme => ({
+  tableCell: {
+    textDecoration: 'none',
   },
-})
+  listItemCell: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    width: '100%',
+    padding: theme.spacing.unit,
+    ...theme.mixins.hover,
+  },
+}))
 export default class RolesTable extends Component {
   static defaultProps = {
     searchTerm: null,
@@ -46,7 +51,7 @@ export default class RolesTable extends Component {
     (roles, sortBy, sortDirection, searchTerm) => {
       const sortByProperty = camelCase(sortBy);
       const filteredRoles = searchTerm
-        ? roles.filter(({ roleId }) => searchTerm.includes(roleId))
+        ? roles.filter(({ roleId }) => roleId.includes(searchTerm))
         : roles;
 
       return ifElse(
@@ -99,20 +104,15 @@ export default class RolesTable extends Component {
           onHeaderClick={this.handleHeaderClick}
           renderRow={({ roleId }) => (
             <TableRow key={roleId}>
-              <TableCell>
-                <TableCellListItem
-                  className={classes.listItemCell}
-                  dense
-                  button
-                  component={Link}
-                  to={`/auth/roles/${encodeURIComponent(roleId)}`}
-                >
-                  <ListItemText
-                    disableTypography
-                    primary={<Typography>{roleId}</Typography>}
-                  />
-                  <LinkIcon size={iconSize} />
-                </TableCellListItem>
+              <TableCell padding="dense">
+                <Link
+                  className={classes.tableCell}
+                  to={`/auth/roles/${encodeURIComponent(roleId)}`}>
+                  <div className={classes.listItemCell}>
+                    <Typography>{roleId}</Typography>
+                    <LinkIcon size={iconSize} />
+                  </div>
+                </Link>
               </TableCell>
             </TableRow>
           )}

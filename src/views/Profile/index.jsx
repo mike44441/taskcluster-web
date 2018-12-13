@@ -1,7 +1,6 @@
 import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Typography from '@material-ui/core/Typography';
 import List from '@material-ui/core/List';
@@ -10,6 +9,7 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Dashboard from '../../components/Dashboard';
 import DateDistance from '../../components/DateDistance';
 import { withAuth } from '../../utils/Auth';
+import ErrorPanel from '../../components/ErrorPanel';
 import profileQuery from './profile.graphql';
 
 @hot(module)
@@ -18,15 +18,14 @@ import profileQuery from './profile.graphql';
 export default class Profile extends Component {
   render() {
     const {
-      classes,
       user,
       data: { currentScopes, loading, error },
     } = this.props;
 
     return (
-      <Dashboard title="Profile" className={classes.root}>
+      <Dashboard title="Profile">
         {!currentScopes && loading && <Spinner loading />}
-        {error && error.graphQLErrors && <ErrorPanel error={error} />}
+        <ErrorPanel error={error} />
         {user &&
           currentScopes && (
             <Fragment>

@@ -14,6 +14,7 @@ import Log from '../../../components/Log';
     position: 'absolute',
     right: theme.spacing.double,
     top: theme.spacing.double,
+    ...theme.mixins.fabIcon,
   },
   miniFab: {
     position: 'absolute',
@@ -45,8 +46,7 @@ export default class TaskLog extends Component {
                 to={`/tasks/${match.params.taskId}/runs/${match.params.runId}`}
                 variant="fab"
                 className={classes.fab}
-                color="secondary"
-              >
+                color="secondary">
                 <ArrowRightIcon />
               </Button>
             </Tooltip>

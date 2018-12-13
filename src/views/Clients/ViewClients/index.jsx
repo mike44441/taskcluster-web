@@ -1,7 +1,6 @@
 import React, { PureComponent, Fragment } from 'react';
 import { hot } from 'react-hot-loader';
 import { graphql } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import PlusIcon from 'mdi-react/PlusIcon';
@@ -14,6 +13,7 @@ import ClientsTable from '../../../components/ClientsTable';
 import { VIEW_CLIENTS_PAGE_SIZE } from '../../../utils/constants';
 import clientsQuery from './clients.graphql';
 import { withAuth } from '../../../utils/Auth';
+import ErrorPanel from '../../../components/ErrorPanel';
 
 @hot(module)
 @withAuth
@@ -53,6 +53,7 @@ export default class ViewClients extends PureComponent {
         previousClientId: props.user.credentials.clientId,
       };
     }
+
     if (!props.user && state.previousClientId !== '') {
       return {
         clientSearch: '',
@@ -63,26 +64,17 @@ export default class ViewClients extends PureComponent {
     return null;
   }
 
-  handleClientSearchChange = ({ target }) => {
-    this.setState({ clientSearch: target.value });
-  };
-
-  handleClientSearchSubmit = e => {
-    e.preventDefault();
-
+  handleClientSearchSubmit = clientSearch => {
     const {
       data: { refetch },
     } = this.props;
-    const { clientSearch } = this.state;
+
+    this.setState({ clientSearch });
 
     refetch({
-      ...(clientSearch
-        ? {
-            clientOptions: {
-              prefix: clientSearch,
-            },
-          }
-        : null),
+      clientOptions: {
+        ...(clientSearch ? { prefix: clientSearch } : null),
+      },
       clientsConnection: {
         limit: VIEW_CLIENTS_PAGE_SIZE,
       },
@@ -117,10 +109,6 @@ export default class ViewClients extends PureComponent {
       updateQuery(previousResult, { fetchMoreResult }) {
         const { edges, pageInfo } = fetchMoreResult.clients;
 
-        if (!edges.length) {
-          return previousResult;
-        }
-
         return dotProp.set(previousResult, 'clients', clients =>
           dotProp.set(
             dotProp.set(clients, 'edges', edges),
@@ -128,28 +116,6 @@ export default class ViewClients extends PureComponent {
             pageInfo
           )
         );
-      },
-    });
-  };
-
-  handleClientSearchChange = ({ target }) => {
-    this.setState({ clientSearch: target.value });
-  };
-
-  handleClientSearchSubmit = e => {
-    e.preventDefault();
-
-    const {
-      data: { refetch },
-    } = this.props;
-    const { clientSearch } = this.state;
-
-    refetch({
-      clientOptions: {
-        ...(clientSearch ? { prefix: clientSearch.trim() } : null),
-      },
-      clientsConnection: {
-        limit: VIEW_CLIENTS_PAGE_SIZE,
       },
     });
   };
@@ -164,7 +130,6 @@ export default class ViewClients extends PureComponent {
       description,
       data: { loading, error, clients },
     } = this.props;
-    const { clientSearch } = this.state;
 
     return (
       <Dashboard
@@ -173,16 +138,13 @@ export default class ViewClients extends PureComponent {
         search={
           <Search
             disabled={loading}
-            value={clientSearch}
-            onChange={this.handleClientSearchChange}
             onSubmit={this.handleClientSearchSubmit}
             placeholder="Client starts with"
           />
-        }
-      >
+        }>
         <Fragment>
-          {!clients && loading && <Spinner loading />}
-          {error && error.graphQLErrors && <ErrorPanel error={error} />}
+          {loading && <Spinner loading />}
+          <ErrorPanel error={error} />
           {clients && (
             <ClientsTable
               onPageChange={this.handlePageChange}
@@ -193,8 +155,7 @@ export default class ViewClients extends PureComponent {
             onClick={this.handleCreate}
             variant="fab"
             color="secondary"
-            className={classes.plusIcon}
-          >
+            className={classes.plusIcon}>
             <PlusIcon />
           </Button>
         </Fragment>

@@ -8,9 +8,9 @@ import Tooltip from '@material-ui/core/Tooltip';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import ScaleBalanceIcon from 'mdi-react/ScaleBalanceIcon';
-import Dashboard from '../../components/Dashboard/index';
-import Button from '../../components/Button';
-import splitLines from '../../utils/splitLines';
+import Dashboard from '../../../components/Dashboard/index';
+import Button from '../../../components/Button/index';
+import splitLines from '../../../utils/splitLines';
 
 @hot(module)
 @withStyles(theme => ({
@@ -139,8 +139,7 @@ export default class ScopesetComparison extends Component {
                           <Typography
                             key={scope}
                             variant="body1"
-                            className={classes.cellGrid}
-                          >
+                            className={classes.cellGrid}>
                             {scope}
                           </Typography>
                         ))}
@@ -151,8 +150,7 @@ export default class ScopesetComparison extends Component {
                           <Typography
                             key={scope}
                             variant="body1"
-                            className={classes.cellGrid}
-                          >
+                            className={classes.cellGrid}>
                             {scope}
                           </Typography>
                         ))}
@@ -167,8 +165,7 @@ export default class ScopesetComparison extends Component {
               color="secondary"
               variant="fab"
               onClick={this.handleCompareScopesClick}
-              className={classes.actionButton}
-            >
+              className={classes.actionButton}>
               <ScaleBalanceIcon />
             </Button>
           </Tooltip>

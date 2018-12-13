@@ -3,7 +3,6 @@ import React, { Component } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import { bool } from 'prop-types';
 import cloneDeep from 'lodash.clonedeep';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
@@ -23,6 +22,7 @@ import removeKeys from '../../../utils/removeKeys';
 import formatError from '../../../utils/formatError';
 import isWorkerTypeNameValid from '../../../utils/isWorkerTypeNameValid';
 import { DEFAULT_AWS_WORKER_TYPE } from '../../../utils/constants';
+import ErrorPanel from '../../../components/ErrorPanel';
 import workerTypeQuery from './workerType.graphql';
 import updateAwsProvisionerWorkerTypeQuery from './updateAwsProvisionerWorkerType.graphql';
 import createAwsProvisionerWorkerTypeQuery from './createAwsProvisionerWorkerType.graphql';
@@ -219,15 +219,12 @@ export default class ViewWorkerTypeDefinition extends Component {
           isNewWorkerType
             ? 'AWS Provisioner Create Worker Type'
             : 'AWS Provisioner Worker Type Definition'
-        }
-      >
+        }>
         {data &&
           !data.awsProvisionerWorkerType &&
           data.loading && <Spinner loading />}
-        {data &&
-          data.error &&
-          data.error.graphQLErrors && <ErrorPanel error={data.error} />}
-        {error && <ErrorPanel error={error} />}
+        {data && <ErrorPanel error={data.error} />}
+        <ErrorPanel error={error} />
         <List>
           <ListItem>
             {isNewWorkerType ? (
@@ -268,8 +265,7 @@ export default class ViewWorkerTypeDefinition extends Component {
                   actionLoading
                 }
                 classes={{ root: classes.successIcon }}
-                variant="fab"
-              >
+                variant="fab">
                 <PlusIcon />
               </Button>
             </div>
@@ -279,7 +275,7 @@ export default class ViewWorkerTypeDefinition extends Component {
             <SpeedDialAction
               requiresAuth
               icon={<ContentSaveIcon />}
-              classes={{ button: classes.successIcon }}
+              className={classes.successIcon}
               tooltipTitle="Update Worker Type"
               onClick={this.handleUpdateWorkerType}
               ButtonProps={{ disabled: invalidDefinition || actionLoading }}
@@ -288,7 +284,7 @@ export default class ViewWorkerTypeDefinition extends Component {
               requiresAuth
               icon={<DeleteIcon />}
               tooltipTitle="Delete Worker Type"
-              classes={{ button: classes.deleteIcon }}
+              className={classes.deleteIcon}
               onClick={this.handleDeleteWorkerType}
               ButtonProps={{ disabled: actionLoading }}
             />

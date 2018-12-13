@@ -2,7 +2,6 @@ import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { withApollo } from 'react-apollo';
 import classNames from 'classnames';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -24,6 +23,7 @@ import PlusIcon from 'mdi-react/PlusIcon';
 import InformationVariantIcon from 'mdi-react/InformationVariantIcon';
 import DeleteIcon from 'mdi-react/DeleteIcon';
 import urls from '../../utils/urls';
+import ErrorPanel from '../../components/ErrorPanel';
 import Dashboard from '../../components/Dashboard';
 import HelpView from '../../components/HelpView';
 import Button from '../../components/Button';
@@ -259,17 +259,15 @@ export default class PulseMessages extends Component {
               <a
                 href={urls.docs('/')}
                 target="_blank"
-                rel="noopener noreferrer"
-              >
+                rel="noopener noreferrer">
                 {urls.docs('/')}
               </a>
               .
             </Typography>
           </HelpView>
-        }
-      >
+        }>
         <Fragment>
-          {error && <ErrorPanel error={error} />}
+          <ErrorPanel error={error} />
           <div className={classes.inputWrapper}>
             <List className={classes.inputList}>
               <ListItem>
@@ -306,8 +304,7 @@ export default class PulseMessages extends Component {
             <Tooltip title="Add Binding">
               <IconButton
                 className={classNames(classes.iconButton, classes.plusIcon)}
-                onClick={this.handleAddBinding}
-              >
+                onClick={this.handleAddBinding}>
                 <PlusIcon />
               </IconButton>
             </Tooltip>
@@ -316,8 +313,7 @@ export default class PulseMessages extends Component {
             {bindings.map(binding => (
               <ListItem
                 className={classes.bindingListItem}
-                key={`${binding.exchange}-${binding.routingKeyPattern}`}
-              >
+                key={`${binding.exchange}-${binding.routingKeyPattern}`}>
                 <ListItemText
                   disableTypography
                   primary={
@@ -334,8 +330,7 @@ export default class PulseMessages extends Component {
                       classes.deleteIcon
                     )}
                     name={binding}
-                    onClick={() => this.handleDeleteBinding(binding)}
-                  >
+                    onClick={() => this.handleDeleteBinding(binding)}>
                     <DeleteIcon />
                   </IconButton>
                 </Tooltip>
@@ -351,14 +346,12 @@ export default class PulseMessages extends Component {
               noItemsMessage="No messages received."
               renderRow={message => (
                 <TableRow
-                  key={`message-${message.routingKey}-${message.exchange}`}
-                >
+                  key={`message-${message.routingKey}-${message.exchange}`}>
                   <TableCell>
                     <Button
                       className={classes.infoButton}
                       size="small"
-                      onClick={() => this.handleMessageDrawerOpen(message)}
-                    >
+                      onClick={() => this.handleMessageDrawerOpen(message)}>
                       <InformationVariantIcon size={iconSize} />
                     </Button>
                     {message.exchange}
@@ -375,7 +368,7 @@ export default class PulseMessages extends Component {
                 tooltipOpen
                 icon={<StopIcon />}
                 onClick={this.handleStopListening}
-                classes={{ button: classes.stopIcon }}
+                className={classes.stopIcon}
                 tooltipTitle="Stop Listening"
               />
             ) : (
@@ -383,7 +376,7 @@ export default class PulseMessages extends Component {
                 tooltipOpen
                 icon={<PlayIcon />}
                 onClick={this.handleStartListening}
-                classes={{ button: classes.playIcon }}
+                className={classes.playIcon}
                 tooltipTitle="Start Listening"
                 ButtonProps={{ disabled: !bindings.length }}
               />
@@ -393,7 +386,7 @@ export default class PulseMessages extends Component {
               icon={<DownloadIcon />}
               tooltipTitle="Download Messages"
               onClick={this.handleDownloadMessagesClick}
-              ButtonProps={{ color: 'secondary', disabled: !messages[0] }}
+              ButtonProps={{ disabled: !messages[0] }}
             />
           </SpeedDial>
           <Drawer
@@ -402,13 +395,11 @@ export default class PulseMessages extends Component {
             classes={{
               paper: classes.drawerPaper,
             }}
-            onClose={this.handleMessageDrawerClose}
-          >
+            onClose={this.handleMessageDrawerClose}>
             <Fragment>
               <IconButton
                 onClick={this.handleMessageDrawerClose}
-                className={classes.drawerCloseIcon}
-              >
+                className={classes.drawerCloseIcon}>
                 <CloseIcon />
               </IconButton>
               <div className={classes.drawerContainer}>

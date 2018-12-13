@@ -1,19 +1,14 @@
 import React, { Component } from 'react';
 import List from '@material-ui/core/List';
-import LibraryIcon from 'mdi-react/LibraryIcon';
 import HexagonMultipleIcon from 'mdi-react/HexagonMultipleIcon';
-import HumanIcon from 'mdi-react/HumanIcon';
 import PlusCircleIcon from 'mdi-react/PlusCircleIcon';
-import BookOpenPageVariantIcon from 'mdi-react/BookOpenPageVariantIcon';
 import GroupIcon from 'mdi-react/GroupIcon';
 import AccountMultipleIcon from 'mdi-react/AccountMultipleIcon';
 import AmazonIcon from 'mdi-react/AmazonIcon';
-import HelpCircleOutlineIcon from 'mdi-react/HelpCircleOutlineIcon';
 import MixcloudIcon from 'mdi-react/MixcloudIcon';
 import BackupRestoreIcon from 'mdi-react/BackupRestoreIcon';
 import AccountKeyIcon from 'mdi-react/AccountKeyIcon';
 import AccountStarIcon from 'mdi-react/AccountStarIcon';
-import JsonIcon from 'mdi-react/JsonIcon';
 import ScaleBalanceIcon from 'mdi-react/ScaleBalanceIcon';
 import ArrowExpandVerticalIcon from 'mdi-react/ArrowExpandVerticalIcon';
 import AccountSettingsIcon from 'mdi-react/AccountSettingsIcon';
@@ -45,8 +40,7 @@ export default class SidebarList extends Component {
         <SidebarListGroup
           to="/auth"
           title="Authorization"
-          icon={<AccountKeyIcon />}
-        >
+          icon={<AccountKeyIcon />}>
           <SidebarListItem to="/auth/clients" icon={<AccountMultipleIcon />}>
             Clients
           </SidebarListItem>
@@ -55,6 +49,16 @@ export default class SidebarList extends Component {
           </SidebarListItem>
           <SidebarListItem to="/auth/scopes" icon={<AccountSettingsIcon />}>
             Scopes
+          </SidebarListItem>
+          <SidebarListItem
+            to="/auth/scopes/compare"
+            icon={<ScaleBalanceIcon />}>
+            Compare Scopes
+          </SidebarListItem>
+          <SidebarListItem
+            to="/auth/scopes/expansions"
+            icon={<ArrowExpandVerticalIcon />}>
+            Expand Scopes
           </SidebarListItem>
         </SidebarListGroup>
 
@@ -82,46 +86,9 @@ export default class SidebarList extends Component {
           Pulse Messages
         </SidebarListItem>
 
-        <SidebarListGroup to="/scopesets" title="Scopesets" icon={<JsonIcon />}>
-          <SidebarListItem to="/scopesets/compare" icon={<ScaleBalanceIcon />}>
-            Compare
-          </SidebarListItem>
-          <SidebarListItem
-            to="/scopesets/expand"
-            icon={<ArrowExpandVerticalIcon />}
-          >
-            Expand
-          </SidebarListItem>
-        </SidebarListGroup>
-
         <SidebarListItem to="/quickstart" icon={<GithubBoxIcon />}>
           GitHub Quickstart
         </SidebarListItem>
-
-        <SidebarListGroup
-          to="/docs"
-          title="Documentation"
-          icon={<LibraryIcon />}
-        >
-          <SidebarListItem to="/docs/tutorial" icon={<HumanIcon />}>
-            Tutorial
-          </SidebarListItem>
-          <SidebarListItem
-            to="/docs/references"
-            icon={<BookOpenPageVariantIcon />}
-          >
-            References
-          </SidebarListItem>
-          <SidebarListItem
-            to="/docs/resources"
-            icon={<HelpCircleOutlineIcon />}
-          >
-            Resources
-          </SidebarListItem>
-          <SidebarListItem to="/docs/people" icon={<AccountMultipleIcon />}>
-            People
-          </SidebarListItem>
-        </SidebarListGroup>
       </List>
     );
   }

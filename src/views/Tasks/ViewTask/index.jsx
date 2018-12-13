@@ -3,7 +3,6 @@ import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import { omit, pathOr } from 'ramda';
 import cloneDeep from 'lodash.clonedeep';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Markdown from '@mozilla-frontend-infra/components/Markdown';
 import { withStyles } from '@material-ui/core/styles';
@@ -40,15 +39,18 @@ import {
   ARTIFACTS_PAGE_SIZE,
   VALID_TASK,
   TASK_ADDED_FIELDS,
+  TASK_POLL_INTERVAL,
 } from '../../../utils/constants';
 import db from '../../../utils/db';
-import removeKeys from '../../../utils/removeKeys';
-import { nice } from '../../../utils/slugid';
-import parameterizeTask from '../../../utils/parameterizeTask';
+import ErrorPanel from '../../../components/ErrorPanel';
 import formatError from '../../../utils/formatError';
+import removeKeys from '../../../utils/removeKeys';
+import parameterizeTask from '../../../utils/parameterizeTask';
+import { nice } from '../../../utils/slugid';
 import submitTaskAction from '../submitTaskAction';
 import taskQuery from './task.graphql';
 import scheduleTaskQuery from './scheduleTask.graphql';
+import rerunTaskQuery from './rerunTask.graphql';
 import purgeWorkerCacheQuery from './purgeWorkerCache.graphql';
 import pageArtifactsQuery from './pageArtifacts.graphql';
 import createTaskQuery from '../createTask.graphql';
@@ -79,8 +81,8 @@ const getCachesFromTask = task =>
   divider: {
     margin: `${theme.spacing.triple}px 0`,
   },
-  owner: {
-    marginTop: theme.spacing.unit,
+  tag: {
+    margin: `${theme.spacing.unit}px ${theme.spacing.unit}px 0 0`,
   },
   dialogListItem: {
     paddingTop: 0,
@@ -90,6 +92,7 @@ const getCachesFromTask = task =>
 @graphql(taskQuery, {
   skip: props => !props.match.params.taskId,
   options: props => ({
+    pollInterval: TASK_POLL_INTERVAL,
     errorPolicy: 'all',
     variables: {
       taskId: props.match.params.taskId,
@@ -154,7 +157,6 @@ export default class ViewTask extends Component {
         taskActions,
         actionInputs,
         actionData,
-        taskSearch: taskId,
         previousTaskId: taskId,
         caches,
         selectedCaches: new Set(caches),
@@ -165,7 +167,6 @@ export default class ViewTask extends Component {
   }
 
   state = {
-    taskSearch: '',
     // eslint-disable-next-line react/no-unused-state
     previousTaskId: null,
     taskActions: [],
@@ -294,6 +295,11 @@ export default class ViewTask extends Component {
     );
   };
 
+  handleRerunComplete = () => {
+    this.handleActionDialogClose();
+    this.props.data.refetch();
+  };
+
   handleCreateInteractiveComplete = taskId => {
     this.handleActionDialogClose();
     this.props.history.push(`/tasks/${taskId}/connect`);
@@ -356,28 +362,29 @@ export default class ViewTask extends Component {
     });
   };
 
-  handleCreateLoaner = async () => {
-    const taskId = nice();
-    const task = parameterizeTask(
-      removeKeys(cloneDeep(this.props.data.task), ['__typename'])
-    );
+  handleCreateLoaner = () =>
+    new Promise(async (resolve, reject) => {
+      const taskId = nice();
+      const task = parameterizeTask(
+        removeKeys(cloneDeep(this.props.data.task), ['__typename'])
+      );
 
-    this.preRunningAction();
+      this.preRunningAction();
 
-    try {
-      await this.props.client.mutate({
-        mutation: createTaskQuery,
-        variables: {
-          taskId,
-          task,
-        },
-      });
-
-      return taskId;
-    } catch (error) {
-      this.postRunningFailedAction(formatError(error));
-    }
-  };
+      try {
+        await this.props.client.mutate({
+          mutation: createTaskQuery,
+          variables: {
+            taskId,
+            task,
+          },
+        });
+        resolve(taskId);
+      } catch (error) {
+        this.postRunningFailedAction(formatError(error));
+        reject(error);
+      }
+    });
 
   handleEdit = task =>
     this.props.history.push({
@@ -439,6 +446,29 @@ export default class ViewTask extends Component {
     });
   };
 
+  handleRerunTaskClick = () => {
+    const title = 'Rerun';
+
+    this.setState({
+      dialogOpen: true,
+      dialogActionProps: {
+        fullScreen: false,
+        body: (
+          <Typography>
+            This will cause a new run of the task to be created with the same{' '}
+            <code>taskId</code>. It will only succeed if the task hasn&#39;t
+            passed it&#39;s deadline. Notice that this may interfere with
+            listeners who only expects this tasks to be resolved once.
+          </Typography>
+        ),
+        title: `${title}?`,
+        onSubmit: this.rerunTask,
+        onComplete: this.handleRerunComplete,
+        confirmText: title,
+      },
+    });
+  };
+
   handleScheduleTaskClick = () => {
     const title = 'Schedule';
 
@@ -486,17 +516,9 @@ export default class ViewTask extends Component {
     this.setState({ dialogError: e, actionLoading: false });
   };
 
-  handleTaskSearchChange = e => {
-    this.setState({ taskSearch: e.target.value || '' });
-  };
-
-  handleTaskSearchSubmit = e => {
-    e.preventDefault();
-
-    const { taskSearch } = this.state;
-
-    if (this.props.match.params.taskId !== taskSearch) {
-      this.props.history.push(`/tasks/${this.state.taskSearch}`);
+  handleTaskSearchSubmit = taskId => {
+    if (this.props.match.params.taskId !== taskId) {
+      this.props.history.push(`/tasks/${taskId}`);
     }
   };
 
@@ -508,48 +530,74 @@ export default class ViewTask extends Component {
     this.setState({ dialogError: null, actionLoading: true });
   };
 
-  purgeWorkerCache = async () => {
-    const { provisionerId, workerType } = this.props.data.task;
-    const { selectedCaches } = this.state;
+  purgeWorkerCache = () =>
+    new Promise(async (resolve, reject) => {
+      const { provisionerId, workerType } = this.props.data.task;
+      const { selectedCaches } = this.state;
 
-    this.preRunningAction();
+      this.preRunningAction();
 
-    try {
-      await Promise.all(
-        [...selectedCaches].map(cacheName =>
-          this.props.client.mutate({
-            mutation: purgeWorkerCacheQuery,
-            variables: {
-              provisionerId,
-              workerType,
-              payload: {
-                cacheName,
+      try {
+        await Promise.all(
+          [...selectedCaches].map(cacheName =>
+            this.props.client.mutate({
+              mutation: purgeWorkerCacheQuery,
+              variables: {
+                provisionerId,
+                workerType,
+                payload: {
+                  cacheName,
+                },
               },
-            },
-          })
-        )
-      );
-    } catch (error) {
-      this.postRunningFailedAction(error);
-    }
-  };
+            })
+          )
+        );
+        resolve();
+      } catch (error) {
+        this.postRunningFailedAction(error);
+        reject(error);
+      }
+    });
 
-  scheduleTask = async () => {
-    const { taskId } = this.props.match.params;
+  rerunTask = () =>
+    new Promise(async (resolve, reject) => {
+      const { taskId } = this.props.match.params;
 
-    this.preRunningAction();
+      this.preRunningAction();
 
-    try {
-      await this.props.client.mutate({
-        mutation: scheduleTaskQuery,
-        variables: {
-          taskId,
-        },
-      });
-    } catch (error) {
-      this.postRunningFailedAction(error);
-    }
-  };
+      try {
+        await this.props.client.mutate({
+          mutation: rerunTaskQuery,
+          variables: {
+            taskId,
+          },
+        });
+        resolve();
+      } catch (error) {
+        this.postRunningFailedAction(error);
+        reject(error);
+      }
+    });
+
+  scheduleTask = () =>
+    new Promise(async (resolve, reject) => {
+      const { taskId } = this.props.match.params;
+
+      this.preRunningAction();
+
+      try {
+        await this.props.client.mutate({
+          mutation: scheduleTaskQuery,
+          variables: {
+            taskId,
+          },
+        });
+        resolve();
+      } catch (error) {
+        this.postRunningFailedAction(error);
+        reject(error);
+      }
+    });
 
   renderActionIcon = action => {
     switch (action.name) {
@@ -598,8 +646,7 @@ export default class ViewTask extends Component {
             <ListItem
               className={this.props.classes.dialogListItem}
               onClick={this.handleSelectCacheClick(cache)}
-              key={cache}
-            >
+              key={cache}>
               <Checkbox
                 checked={selectedCaches.has(cache)}
                 tabIndex={-1}
@@ -624,33 +671,24 @@ export default class ViewTask extends Component {
       dialogActionProps,
       actionData,
       taskActions,
-      taskSearch,
       selectedAction,
       dialogOpen,
       actionInputs,
       actionLoading,
       dialogError,
     } = this.state;
+    let tags;
+
+    if (task) {
+      tags = Object.entries(task.tags);
+    }
 
     return (
       <Dashboard
         helpView={<HelpView description={description} />}
-        search={
-          <Search
-            value={taskSearch}
-            onChange={this.handleTaskSearchChange}
-            onSubmit={this.handleTaskSearchSubmit}
-          />
-        }
-      >
+        search={<Search onSubmit={this.handleTaskSearchSubmit} />}>
         {loading && <Spinner loading />}
-        {error &&
-          error.graphQLErrors && (
-            <ErrorPanel
-              error={error.graphQLErrors[0].message}
-              warning={Boolean(task)}
-            />
-          )}
+        <ErrorPanel error={error} warning={Boolean(task)} />
         {task && (
           <Fragment>
             <Typography variant="h5" className={classes.title}>
@@ -660,7 +698,7 @@ export default class ViewTask extends Component {
               <Markdown>{task.metadata.description}</Markdown>
             </Typography>
             <Chip
-              className={classes.owner}
+              className={classes.tag}
               label={
                 <Fragment>
                   owned by:&nbsp;&nbsp;
@@ -668,6 +706,19 @@ export default class ViewTask extends Component {
                 </Fragment>
               }
             />
+            {tags.map(([key, value]) => (
+              <Chip
+                className={classes.tag}
+                key={key}
+                label={
+                  <Fragment>
+                    {key}
+                    :&nbsp;&nbsp;
+                    <em>{value}</em>
+                  </Fragment>
+                }
+              />
+            ))}
             <Divider className={classes.divider} />
             <Grid container spacing={24}>
               <Grid item xs={12} md={6}>
@@ -689,12 +740,23 @@ export default class ViewTask extends Component {
               </Grid>
             </Grid>
             <SpeedDial>
+              {!('rerun' in actionData) && (
+                <SpeedDialAction
+                  requiresAuth
+                  tooltipOpen
+                  ButtonProps={{
+                    disabled: actionLoading,
+                  }}
+                  icon={<RestartIcon />}
+                  tooltipTitle="Rerun"
+                  onClick={this.handleRerunTaskClick}
+                />
+              )}
               {!('schedule' in actionData) && (
                 <SpeedDialAction
                   requiresAuth
                   tooltipOpen
                   ButtonProps={{
-                    color: 'secondary',
                     disabled: actionLoading,
                   }}
                   icon={<ClockOutlineIcon />}
@@ -707,7 +769,6 @@ export default class ViewTask extends Component {
                   requiresAuth
                   tooltipOpen
                   ButtonProps={{
-                    color: 'secondary',
                     disabled: actionLoading,
                   }}
                   icon={<FlashIcon />}
@@ -719,7 +780,6 @@ export default class ViewTask extends Component {
                 requiresAuth
                 tooltipOpen
                 ButtonProps={{
-                  color: 'secondary',
                   disabled: actionLoading,
                 }}
                 icon={<PencilIcon />}
@@ -731,7 +791,6 @@ export default class ViewTask extends Component {
                   requiresAuth
                   tooltipOpen
                   ButtonProps={{
-                    color: 'secondary',
                     disabled: actionLoading,
                   }}
                   icon={<ConsoleLineIcon />}
@@ -748,7 +807,6 @@ export default class ViewTask extends Component {
                     key={action.title}
                     ButtonProps={{
                       name: action.name,
-                      color: 'primary',
                       disabled: actionLoading,
                     }}
                     icon={this.renderActionIcon(action)}

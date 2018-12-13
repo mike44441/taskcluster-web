@@ -2,6 +2,7 @@ import {
   arrayOf,
   bool,
   instanceOf,
+  array,
   number,
   object,
   oneOf,
@@ -27,11 +28,36 @@ export const pageInfo = shape({
   nextCursor: string,
 });
 
+export const docsPageTransition = shape({
+  title: string,
+  path: string,
+});
+
+export const docsPageMetadata = shape({
+  followup: shape({
+    subtext: string,
+    links: object,
+  }),
+  filename: string,
+  order: number,
+  title: string,
+});
+
+export const docsPageInfo = shape({
+  children: array,
+  data: docsPageMetadata,
+  name: string,
+  path: string,
+  next: docsPageTransition,
+  prev: docsPageTransition,
+  up: docsPageTransition,
+});
+
 export const artifact = shape({
   name: string,
   contentType: string,
   url: string,
-  isPublicLog: bool,
+  isPublic: bool,
 });
 
 export const artifacts = shape({
@@ -61,6 +87,8 @@ export const taskState = oneOf([
   'FAILED',
   'EXCEPTION',
 ]);
+
+export const taskGroupState = oneOf(['FAILED', 'COMPLETED', 'RUNNING']);
 
 export const status = shape({
   state: taskState,

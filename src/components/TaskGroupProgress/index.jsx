@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
-import { bool, func, shape, arrayOf, string } from 'prop-types';
-import dotProp from 'dot-prop-immutable';
+import { func, shape, arrayOf, string } from 'prop-types';
 import memoize from 'fast-memoize';
-import { equals, pipe, filter, map, sort as rSort } from 'ramda';
+import { sum, pipe, filter, map, sort as rSort } from 'ramda';
 import { lowerCase, title } from 'change-case';
 import { withStyles } from '@material-ui/core/styles';
 import classNames from 'classnames';
@@ -21,14 +20,9 @@ import CloseIcon from 'mdi-react/CloseIcon';
 import AutorenewIcon from 'mdi-react/AutorenewIcon';
 import PlaylistRemoveIcon from 'mdi-react/PlaylistRemoveIcon';
 import { task, pageInfo, taskState } from '../../utils/prop-types';
-import {
-  TASK_GROUP_PROGRESS_SIZE,
-  TASK_GROUP_POLLING_INTERVAL,
-  TASK_STATE,
-  THEME,
-  INITIAL_CURSOR,
-} from '../../utils/constants';
+import { TASK_STATE, THEME } from '../../utils/constants';
 import sort from '../../utils/sort';
+import Helmet from '../Helmet';
 
 const sorted = pipe(
   filter(taskGroup => taskGroup.node.metadata.name),
@@ -37,8 +31,9 @@ const sorted = pipe(
     ({
       node: {
         metadata: { name },
+        status: { state },
       },
-    }) => name
+    }) => `${name}-${state}`
   )
 );
 const initialStatusCount = {
@@ -49,7 +44,6 @@ const initialStatusCount = {
   pending: 0,
   unscheduled: 0,
 };
-let previousCursor;
 const getStatusCount = memoize(
   taskGroupCompactEdges => {
     const statusCount = { ...initialStatusCount };
@@ -109,10 +103,6 @@ const getStatusCount = memoize(
     justifyContent: 'space-around',
     cursor: 'pointer',
     margin: theme.spacing.unit,
-    '&:disabled': {
-      backgroundColor: theme.palette.action.disabledBackground,
-      color: theme.palette.action.disabled,
-    },
     '& > div': {
       display: 'flex',
       flexDirection: 'column',
@@ -172,143 +162,51 @@ export default class TaskGroupProgress extends Component {
   static defaultProps = {
     taskGroup: null,
     filter: null,
-    disabled: false,
-    onRefetch: null,
-    onFetchMore: null,
-    onCountUpdate: null,
   };
 
   static propTypes = {
-    /** The task group ID being inspected. */
-    taskGroupId: string.isRequired,
     /** The selected task state. This will change the card icon. */
     filter: taskState,
     /** Callback fired when the a state card is clicked */
     onStatusClick: func.isRequired,
-    /** Callback fired when the status counts has been calculated. */
-    onCountUpdate: func,
+    /* eslint-disable react/no-unused-prop-types */
+    /** The task group ID being inspected. */
+    taskGroupId: string.isRequired,
     /** A Task GraphQL PageConnection instance. */
     taskGroup: shape({
       pageInfo,
       edges: arrayOf(task),
     }),
-    // TODO: Add comment
-    /** A GraphQL Apollo fetchMore function. */
-    onFetchMore: func,
-    /** A GraphQL Apollo refetch function. */
-    onRefetch: func,
-    /** If true, the state cards will be disabled. */
-    disabled: bool,
+    /* eslint-enable react/no-unused-prop-types */
   };
-
-  constructor(props) {
-    super(props);
-
-    previousCursor = INITIAL_CURSOR;
-  }
 
   state = {
     statusCount: initialStatusCount,
   };
 
-  /* eslint-disable react/no-did-update-set-state */
-  componentDidUpdate(prevProps) {
-    const {
-      onCountUpdate,
-      onRefetch,
-      onFetchMore,
-      taskGroupId,
-      taskGroup,
-    } = this.props;
-
-    if (!taskGroup) {
-      return;
-    }
-
-    const { statusCount } = this.state;
-
-    if (prevProps.taskGroupId !== taskGroupId) {
-      previousCursor = INITIAL_CURSOR;
-      this.setState({ statusCount: initialStatusCount });
-
-      return onRefetch({
-        pollInterval: TASK_GROUP_POLLING_INTERVAL,
-        variables: {
-          taskGroupId,
-          taskGroupCompactConnection: {
-            limit: TASK_GROUP_PROGRESS_SIZE,
-          },
-        },
-      });
-    }
-
-    const newStatusCount = taskGroup.edges
-      ? getStatusCount(taskGroup.edges)
-      : {};
+  static getDerivedStateFromProps(props) {
+    const { taskGroupId, taskGroup } = props;
     // Make sure data is not from another task group which
     // can happen when a user searches for a different task group
-    const isFromSameTaskGroupId = taskGroup.edges[0]
-      ? taskGroup.edges[0].node.taskGroupId === taskGroupId
-      : true;
+    const isFromSameTaskGroupId =
+      taskGroup &&
+      (taskGroup.edges[0]
+        ? taskGroup.edges[0].node.taskGroupId === taskGroupId
+        : true);
 
     // We're done counting
-    if (
-      !taskGroup.pageInfo.hasNextPage &&
-      !equals(statusCount, newStatusCount) &&
-      isFromSameTaskGroupId
-    ) {
-      this.setState({ statusCount: newStatusCount });
+    if (isFromSameTaskGroupId && !taskGroup.pageInfo.hasNextPage) {
+      const newStatusCount = taskGroup.edges
+        ? getStatusCount(taskGroup.edges)
+        : {};
 
-      return onCountUpdate();
+      return { statusCount: newStatusCount };
     }
 
-    if (
-      previousCursor === taskGroup.pageInfo.cursor &&
-      taskGroup.pageInfo.hasNextPage
-    ) {
-      const { taskGroup } = this.props;
-
-      onFetchMore({
-        variables: {
-          taskGroupId: this.props.taskGroupId,
-          taskGroupCompactConnection: {
-            limit: TASK_GROUP_PROGRESS_SIZE,
-            cursor: taskGroup.pageInfo.nextCursor,
-            previousCursor: taskGroup.pageInfo.cursor,
-          },
-        },
-        updateQuery(previousResult, { fetchMoreResult, variables }) {
-          if (
-            variables.taskGroupCompactConnection.previousCursor ===
-            previousCursor
-          ) {
-            const { edges, pageInfo } = fetchMoreResult.taskGroup;
-
-            previousCursor = variables.taskGroupCompactConnection.cursor;
-
-            if (!edges.length) {
-              return previousResult;
-            }
-
-            const result = dotProp.set(previousResult, 'taskGroup', taskGroup =>
-              dotProp.set(
-                dotProp.set(
-                  taskGroup,
-                  'edges',
-                  previousResult.taskGroup.edges.concat(edges)
-                ),
-                'pageInfo',
-                pageInfo
-              )
-            );
-
-            return result;
-          }
-        },
-      });
-    }
+    return {
+      statusCount: initialStatusCount,
+    };
   }
-  /* eslint-enable react/no-did-update-set-state */
 
   getStatusIcon = status => {
     if (this.props.filter === status) {
@@ -346,22 +244,47 @@ export default class TaskGroupProgress extends Component {
     }
   };
 
+  getTaskGroupState = () => {
+    const {
+      completed,
+      exception,
+      failed,
+      pending,
+      running,
+      unscheduled,
+    } = this.state.statusCount;
+    const allTasks = sum([completed, exception, pending, running, unscheduled]);
+    const unfinishedTasks = sum([pending, running, unscheduled]);
+
+    if (allTasks === 0) {
+      return;
+    }
+
+    if (failed > 0) {
+      return TASK_STATE.FAILED;
+    }
+
+    if (unfinishedTasks > 0) {
+      return TASK_STATE.RUNNING;
+    }
+
+    return TASK_STATE.COMPLETED;
+  };
+
   render() {
-    const { classes, onStatusClick, disabled } = this.props;
+    const { classes, onStatusClick } = this.props;
     const { statusCount } = this.state;
     const showDots = Object.values(statusCount).reduce((a, b) => a + b) === 0;
+    const taskGroupState = this.getTaskGroupState();
 
     return (
       <Grid container spacing={16}>
+        <Helmet state={taskGroupState} />
         {Object.keys(TASK_STATE).map(status => {
           const Icon = this.getStatusIcon(status);
-          const count = showDots ? '...' : statusCount[lowerCase(status)];
 
           return (
             <ButtonBase
-              disabled={disabled}
-              centerRipple
-              focusRipple
               key={status}
               name={status}
               variant="contained"
@@ -369,29 +292,23 @@ export default class TaskGroupProgress extends Component {
               className={classNames(
                 classes[`${lowerCase(status)}Button`],
                 classes.statusButton
-              )}
-            >
+              )}>
               <div>
                 <Icon color="white" className={classes.statusIcon} size={32} />
               </div>
               <div>
                 <Typography
                   align="right"
-                  className={classNames({
-                    [classes.statusButtonTypography]: !disabled,
-                    [classes.statusButtonTypographyDisabled]: disabled,
-                  })}
-                  variant="h4"
-                >
-                  {count}
+                  className={classes.statusButtonTypography}
+                  variant="h4">
+                  {showDots ? '...' : statusCount[lowerCase(status)]}
                 </Typography>
                 <Typography
-                  className={classNames(classes.statusTitle, {
-                    [classes.statusButtonTypography]: !disabled,
-                    [classes.statusButtonTypographyDisabled]: disabled,
-                  })}
-                  variant="caption"
-                >
+                  className={classNames(
+                    classes.statusTitle,
+                    classes.statusButtonTypography
+                  )}
+                  variant="caption">
                   {title(status)}
                 </Typography>
               </div>

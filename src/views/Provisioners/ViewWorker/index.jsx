@@ -2,11 +2,10 @@ import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
 import { format, addYears, isAfter } from 'date-fns';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
-import HammerIcon from 'mdi-react/HammerIcon';
 import TextField from '@material-ui/core/TextField';
 import HomeLockIcon from 'mdi-react/HomeLockIcon';
+import HammerIcon from 'mdi-react/HammerIcon';
 import HomeLockOpenIcon from 'mdi-react/HomeLockOpenIcon';
 import Dashboard from '../../../components/Dashboard';
 import WorkerDetailsCard from '../../../components/WorkerDetailsCard';
@@ -15,6 +14,7 @@ import SpeedDial from '../../../components/SpeedDial';
 import SpeedDialAction from '../../../components/SpeedDialAction';
 import WorkerTable from '../../../components/WorkerTable';
 import { withAuth } from '../../../utils/Auth';
+import ErrorPanel from '../../../components/ErrorPanel';
 import workerQuery from './worker.graphql';
 import quarantineWorkerQuery from './quarantineWorker.graphql';
 
@@ -140,7 +140,7 @@ export default class ViewWorker extends Component {
       <Dashboard title="Worker">
         <Fragment>
           {loading && <Spinner loading />}
-          {error && error.graphQLErrors && <ErrorPanel error={error} />}
+          <ErrorPanel error={error} />
           {worker && (
             <Fragment>
               <WorkerDetailsCard worker={worker} />
@@ -165,7 +165,6 @@ export default class ViewWorker extends Component {
                   }
                   onClick={this.handleDialogOpen}
                   ButtonProps={{
-                    color: 'secondary',
                     disabled: actionLoading,
                   }}
                 />
@@ -177,7 +176,6 @@ export default class ViewWorker extends Component {
                     icon={<HammerIcon />}
                     onClick={() => this.handleActionDialogOpen(action)}
                     ButtonProps={{
-                      color: 'secondary',
                       disabled: actionLoading,
                     }}
                     tooltipTitle={action.title}

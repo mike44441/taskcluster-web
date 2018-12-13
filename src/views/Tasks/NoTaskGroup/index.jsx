@@ -25,7 +25,6 @@ import db from '../../../utils/db';
 export default class NoTaskGroup extends Component {
   state = {
     recentTaskGroups: null,
-    taskGroupSearch: '',
   };
 
   async componentDidMount() {
@@ -37,30 +36,18 @@ export default class NoTaskGroup extends Component {
     this.setState({ recentTaskGroups });
   }
 
-  handleTaskGroupSearchChange = e => {
-    this.setState({ taskGroupSearch: e.target.value || '' });
-  };
-
-  handleTaskGroupSearchSubmit = e => {
-    e.preventDefault();
-    this.props.history.push(`/tasks/groups/${this.state.taskGroupSearch}`);
+  handleTaskGroupSearchSubmit = taskGroupId => {
+    this.props.history.push(`/tasks/groups/${taskGroupId}`);
   };
 
   render() {
     const { classes, description } = this.props;
-    const { taskGroupSearch, recentTaskGroups } = this.state;
+    const { recentTaskGroups } = this.state;
 
     return (
       <Dashboard
         helpView={<HelpView description={description} />}
-        search={
-          <Search
-            value={taskGroupSearch}
-            onChange={this.handleTaskGroupSearchChange}
-            onSubmit={this.handleTaskGroupSearchSubmit}
-          />
-        }
-      >
+        search={<Search onSubmit={this.handleTaskGroupSearchSubmit} />}>
         <Typography className={classes.infoText}>
           Enter a task group ID in the search box
         </Typography>
@@ -72,16 +59,14 @@ export default class NoTaskGroup extends Component {
                 <ListSubheader component="div">
                   Recent Task Groups
                 </ListSubheader>
-              }
-            >
+              }>
               {recentTaskGroups.map(({ taskGroupId }) => (
                 <ListItem
                   button
                   className={classes.listItemButton}
                   component={Link}
                   to={`/tasks/groups/${taskGroupId}`}
-                  key={taskGroupId}
-                >
+                  key={taskGroupId}>
                   <ListItemText primary={taskGroupId} />
                   <LinkIcon />
                 </ListItem>

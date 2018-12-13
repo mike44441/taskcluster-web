@@ -1,5 +1,5 @@
 import { createMuiTheme } from '@material-ui/core/styles';
-import { lighten } from '@material-ui/core/styles/colorManipulator';
+import { fade, lighten } from '@material-ui/core/styles/colorManipulator';
 import transitions from '@material-ui/core/styles/transitions';
 import red from '@material-ui/core/colors/red';
 import amber from '@material-ui/core/colors/amber';
@@ -60,7 +60,7 @@ const createTheme = isDarkTheme => ({
       disabled: isDarkTheme ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
       hint: isDarkTheme ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
       icon: isDarkTheme ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
-      active: isDarkTheme ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+      active: isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)',
       inactive: isDarkTheme ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
     },
   },
@@ -86,6 +86,7 @@ const createTheme = isDarkTheme => ({
     quad: 32,
   },
   drawerWidth: THEME.DRAWER_WIDTH,
+  docsDrawerWidth: THEME.DRAWER_WIDTH + 125,
   mixins: {
     highlight: {
       fontFamily: 'Consolas, Monaco, Andale Mono, Ubuntu Mono, monospace',
@@ -111,12 +112,42 @@ const createTheme = isDarkTheme => ({
         fill: isDarkTheme ? THEME.PRIMARY_TEXT_DARK : THEME.PRIMARY_TEXT_LIGHT,
       },
     },
+    hover: {
+      '&:hover': {
+        textDecoration: 'none',
+        backgroundColor: fade(
+          isDarkTheme ? THEME.PRIMARY_TEXT_DARK : THEME.PRIMARY_TEXT_LIGHT,
+          0.08
+        ),
+        // Reset on touch devices, it doesn't add specificity
+        '@media (hover: none)': {
+          backgroundColor: 'transparent',
+        },
+        '&$disabled': {
+          backgroundColor: 'transparent',
+        },
+      },
+    },
     fab: {
       position: 'fixed',
       bottom: 16,
       right: 24,
       '& .mdi-icon': {
         fill: 'white',
+      },
+    },
+    fabIcon: {
+      '& .mdi-icon': {
+        fill: 'white',
+      },
+    },
+    secondaryIcon: {
+      backgroundColor: THEME.SECONDARY,
+      '&:hover': {
+        backgroundColor: fade(THEME.SECONDARY, 0.9),
+      },
+      '& svg': {
+        backgroundColor: 'transparent',
       },
     },
     successIcon: {
@@ -146,6 +177,10 @@ const createTheme = isDarkTheme => ({
         backgroundColor: 'transparent',
       },
     },
+    unorderedList: {
+      listStyleType: 'square',
+      paddingLeft: 32,
+    },
   },
   overrides: {
     MuiPaper: {
@@ -156,6 +191,9 @@ const createTheme = isDarkTheme => ({
     MuiButton: {
       sizeSmall: {
         minWidth: 36,
+      },
+      extendedFab: {
+        height: 36,
       },
     },
     MuiCircularProgress: {
@@ -237,7 +275,7 @@ export default {
       sidebarBackground: theme.palette.primary.main,
       codeBackground: theme.palette.primary.main,
     },
-    sidebarWidth: theme.drawerWidth,
+    sidebarWidth: THEME.DRAWER_WIDTH,
     maxWidth: '100vw',
   },
 };

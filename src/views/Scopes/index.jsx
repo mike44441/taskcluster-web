@@ -1,14 +1,19 @@
 import { hot } from 'react-hot-loader';
-import React, { Component } from 'react';
+import React, { lazy, Component } from 'react';
 import { Switch } from 'react-router-dom';
 import RouteWithProps from '../../components/RouteWithProps';
-import loadable from '../../utils/loadable';
 
-const ListScopes = loadable(() =>
+const ListScopes = lazy(() =>
   import(/* webpackChunkName: 'Scopes.ListScopes' */ './ListScopes')
 );
-const ViewScope = loadable(() =>
+const ViewScope = lazy(() =>
   import(/* webpackChunkName: 'Scopes.ViewScope' */ './ViewScope')
+);
+const ScopesetExpander = lazy(() =>
+  import(/* webpackChunkName: 'ScopesetExpander' */ './ScopesetExpander')
+);
+const ScopesetComparison = lazy(() =>
+  import(/* webpackChunkName: 'ScopesetComparison' */ './ScopesetComparison')
 );
 
 @hot(module)
@@ -21,6 +26,16 @@ export default class Scopes extends Component {
 
     return (
       <Switch>
+        <RouteWithProps
+          path={`${path}/expansions`}
+          {...props}
+          component={ScopesetExpander}
+        />
+        <RouteWithProps
+          path={`${path}/compare`}
+          {...props}
+          component={ScopesetComparison}
+        />
         <RouteWithProps
           path={`${path}/:selectedScope`}
           {...props}

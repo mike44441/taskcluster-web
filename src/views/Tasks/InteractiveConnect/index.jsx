@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { graphql } from 'react-apollo';
 import dotProp from 'dot-prop-immutable';
 import classNames from 'classnames';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
@@ -20,6 +19,8 @@ import Dashboard from '../../../components/Dashboard';
 import Search from '../../../components/Search';
 import Markdown from '../../../components/Markdown';
 import StatusLabel from '../../../components/StatusLabel';
+import ErrorPanel from '../../../components/ErrorPanel';
+import { withAuth } from '../../../utils/Auth';
 import taskQuery from './task.graphql';
 import {
   INITIAL_CURSOR,
@@ -31,8 +32,10 @@ import {
 let previousCursor;
 
 @hot(module)
+@withAuth
 @graphql(taskQuery, {
   options: props => ({
+    errorPolicy: 'all',
     pollInterval: INTERACTIVE_CONNECT_TASK_POLL_INTERVAL,
     variables: {
       taskId: props.match.params.taskId,
@@ -130,7 +133,6 @@ export default class InteractiveConnect extends Component {
     displayUrl: null,
     shellUrl: null,
     artifactsLoading: true,
-    taskIdSearch: this.props.match.params.taskId,
     // eslint-disable-next-line react/no-unused-state
     previousTaskId: this.props.match.params.taskId,
   };
@@ -236,17 +238,9 @@ export default class InteractiveConnect extends Component {
     window.open(this.state.shellUrl, '_blank');
   };
 
-  handleTaskIdSearchChange = ({ target: { value } }) => {
-    this.setState({ taskIdSearch: value || '' });
-  };
-
-  handleTaskIdSearchSubmit = e => {
-    e.preventDefault();
-
-    const { taskIdSearch } = this.state;
-
-    if (taskIdSearch && this.props.match.params.taskId !== taskIdSearch) {
-      this.props.history.push(`/tasks/${this.state.taskIdSearch}/connect`);
+  handleTaskIdSearchSubmit = taskId => {
+    if (taskId && this.props.match.params.taskId !== taskId) {
+      this.props.history.push(`/tasks/${taskId}/connect`);
     }
   };
 
@@ -257,6 +251,7 @@ export default class InteractiveConnect extends Component {
       match: {
         params: { taskId },
       },
+      user,
     } = this.props;
     const interactiveStatus = this.getInteractiveStatus();
     const isSessionReady = interactiveStatus === INTERACTIVE_TASK_STATUS.READY;
@@ -269,7 +264,7 @@ export default class InteractiveConnect extends Component {
           <ErrorPanel
             className={classes.warningPanel}
             warning
-            error="This is not a development environment! Interactive
+            error="This is not a development environment. Interactive
               tasks can help debug issues, but note that these workers may be spot
               nodes that can be terminated at any time."
           />
@@ -310,8 +305,7 @@ export default class InteractiveConnect extends Component {
               classes.viewTaskDetails
             )}
             component={Link}
-            to={`/tasks/${taskId}`}
-          >
+            to={`/tasks/${taskId}`}>
             <ListItemText primary="View task details" />
             <LinkIcon />
           </ListItem>
@@ -326,19 +320,19 @@ export default class InteractiveConnect extends Component {
             </Typography>
             <List>
               <ListItem
+                disabled={!user}
                 button
                 onClick={this.handleShellOpen}
-                className={classes.listItemButton}
-              >
+                className={classes.listItemButton}>
                 <ConsoleIcon />
                 <ListItemText primary="Shell" />
                 <OpenInNewIcon />
               </ListItem>
               <ListItem
+                disabled={!user}
                 onClick={this.handleDisplayOpen}
                 button
-                className={classes.listItemButton}
-              >
+                className={classes.listItemButton}>
                 <MonitorIcon />
                 <ListItemText primary="Display" />
                 <OpenInNewIcon />
@@ -354,23 +348,16 @@ export default class InteractiveConnect extends Component {
     const {
       data: { task, error },
     } = this.props;
-    const { artifactsLoading, taskIdSearch } = this.state;
+    const { artifactsLoading } = this.state;
 
     return (
       <Dashboard
         title="Interactive Connect"
-        search={
-          <Search
-            value={taskIdSearch}
-            onChange={this.handleTaskIdSearchChange}
-            onSubmit={this.handleTaskIdSearchSubmit}
-          />
-        }
-      >
+        search={<Search onSubmit={this.handleTaskIdSearchSubmit} />}>
         <Fragment>
           {!error && artifactsLoading && <Spinner loading />}
-          {error && <ErrorPanel error={error} />}
-          {!error && !artifactsLoading && task && this.renderTask()}
+          <ErrorPanel error={error} />
+          {!artifactsLoading && task && this.renderTask()}
         </Fragment>
       </Dashboard>
     );

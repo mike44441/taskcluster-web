@@ -1,15 +1,16 @@
 import { hot } from 'react-hot-loader';
 import React, { PureComponent, Fragment } from 'react';
 import { graphql } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
+import Tooltip from '@material-ui/core/Tooltip';
 import PlusIcon from 'mdi-react/PlusIcon';
 import Dashboard from '../../../components/Dashboard';
 import Search from '../../../components/Search';
 import Button from '../../../components/Button';
 import RolesTable from '../../../components/RolesTable';
 import HelpView from '../../../components/HelpView';
+import ErrorPanel from '../../../components/ErrorPanel';
 import rolesQuery from './roles.graphql';
 
 @hot(module)
@@ -28,8 +29,8 @@ export default class ViewRoles extends PureComponent {
     this.props.history.push('/auth/roles/create');
   };
 
-  handleRoleSearchChange = ({ target }) => {
-    this.setState({ roleSearch: target.value });
+  handleRoleSearchSubmit = roleSearch => {
+    this.setState({ roleSearch });
   };
 
   render() {
@@ -47,24 +48,23 @@ export default class ViewRoles extends PureComponent {
         search={
           <Search
             disabled={loading}
-            value={roleSearch}
-            onChange={this.handleRoleSearchChange}
-            placeholder="Role starts with"
+            onSubmit={this.handleRoleSearchSubmit}
+            placeholder="Role contains"
           />
-        }
-      >
+        }>
         <Fragment>
           {!roles && loading && <Spinner loading />}
-          {error && error.graphQLErrors && <ErrorPanel error={error} />}
-          {roles && <RolesTable roles={roles} />}
-          <Button
-            onClick={this.handleCreate}
-            variant="fab"
-            color="secondary"
-            className={classes.plusIcon}
-          >
-            <PlusIcon />
-          </Button>
+          <ErrorPanel error={error} />
+          {roles && <RolesTable searchTerm={roleSearch} roles={roles} />}
+          <Tooltip title="Create Role">
+            <Button
+              onClick={this.handleCreate}
+              variant="fab"
+              color="secondary"
+              className={classes.plusIcon}>
+              <PlusIcon />
+            </Button>
+          </Tooltip>
         </Fragment>
       </Dashboard>
     );

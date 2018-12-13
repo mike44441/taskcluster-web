@@ -2,7 +2,6 @@ import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql } from 'react-apollo';
 import dotProp from 'dot-prop-immutable';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -13,6 +12,7 @@ import Button from '../../../components/Button';
 import CachePurgesTable from '../../../components/CachePurgesTable';
 import HelpView from '../../../components/HelpView';
 import { VIEW_CACHE_PURGES_PAGE_SIZE } from '../../../utils/constants';
+import ErrorPanel from '../../../components/ErrorPanel';
 import cachePurgesQuery from './cachePurges.graphql';
 
 @hot(module)
@@ -87,11 +87,10 @@ export default class ViewCachePurges extends Component {
             </Typography>
           </HelpView>
         }
-        title="Cache Purges"
-      >
+        title="Cache Purges">
         <Fragment>
           {!cachePurges && loading && <Spinner loading />}
-          {error && error.graphQLErrors && <ErrorPanel error={error} />}
+          <ErrorPanel error={error} />
           {cachePurges && (
             <CachePurgesTable
               cachePurgesConnection={cachePurges}
@@ -101,14 +100,12 @@ export default class ViewCachePurges extends Component {
           <Tooltip
             enterDelay={300}
             id="create-purge-cache-tooltip"
-            title="Create Purge Cache Request"
-          >
+            title="Create Purge Cache Request">
             <Button
               onClick={this.handleCreate}
               variant="fab"
               color="secondary"
-              className={classes.plusIcon}
-            >
+              className={classes.plusIcon}>
               <PlusIcon />
             </Button>
           </Tooltip>

@@ -1,8 +1,7 @@
 import React, { Component, Fragment } from 'react';
 import { bool, node, string } from 'prop-types';
-import { Link } from 'react-router-dom';
+import { Link, withRouter } from 'react-router-dom';
 import classNames from 'classnames';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import Drawer from '@material-ui/core/Drawer';
 import AppBar from '@material-ui/core/AppBar';
@@ -16,14 +15,19 @@ import MenuIcon from 'mdi-react/MenuIcon';
 import CloseIcon from 'mdi-react/CloseIcon';
 import HelpIcon from 'mdi-react/HelpIcon';
 import LightBulbOn from 'mdi-react/LightbulbOnIcon';
+import BookOpenPageVariantIcon from 'mdi-react/BookOpenPageVariantIcon';
 import LightBulbOnOutline from 'mdi-react/LightbulbOnOutlineIcon';
 import PageTitle from '../PageTitle';
+import Helmet from '../Helmet';
 import UserMenu from './UserMenu';
 import SidebarList from './SidebarList';
-import { THEME } from '../../utils/constants';
+import { THEME, DOCS_PATH_PREFIX } from '../../utils/constants';
 import { withThemeToggler } from '../../utils/ToggleTheme';
-import reportError from '../../utils/reportError';
+import Logo from '../../images/logo.png';
+import ErrorPanel from '../ErrorPanel';
+import DocsSidebarList from './DocsSidebarList';
 
+@withRouter
 @withStyles(
   theme => ({
     root: {
@@ -33,7 +37,7 @@ import reportError from '../../utils/reportError';
       overflow: 'hidden',
       position: 'relative',
       display: 'flex',
-      width: '100vw',
+      width: '100%',
     },
     appBar: {
       position: 'fixed',
@@ -42,6 +46,14 @@ import reportError from '../../utils/reportError';
       [theme.breakpoints.up('md')]: {
         width: `calc(100% - ${theme.drawerWidth}px)`,
       },
+    },
+    docsAppBar: {
+      [theme.breakpoints.up('md')]: {
+        width: `calc(100% - ${theme.docsDrawerWidth}px)`,
+      },
+    },
+    docsContentWidth: {
+      width: `calc(100% - ${theme.docsDrawerWidth}px)`,
     },
     appBarTitle: {
       fontFamily: 'Roboto300',
@@ -70,6 +82,9 @@ import reportError from '../../utils/reportError';
       borderRight: 0,
       backgroundColor: theme.palette.primary.main,
     },
+    docsDrawerPaper: {
+      width: theme.docsDrawerWidth,
+    },
     helpDrawerPaper: {
       width: '40vw',
       [theme.breakpoints.down('sm')]: {
@@ -81,12 +96,16 @@ import reportError from '../../utils/reportError';
     title: {
       textDecoration: 'none',
       color: theme.palette.text.primary,
+      width: '100%',
     },
     contentPadding: {
       paddingTop: theme.spacing.triple,
       paddingLeft: theme.spacing.triple,
       paddingRight: theme.spacing.triple,
       paddingBottom: theme.spacing.triple * 4,
+    },
+    logoStyle: {
+      marginTop: theme.spacing.unit,
     },
     content: {
       flexGrow: 1,
@@ -101,6 +120,12 @@ import reportError from '../../utils/reportError';
       [theme.breakpoints.up('md')]: {
         marginLeft: theme.drawerWidth,
         width: `calc(100% - ${theme.drawerWidth}px)`,
+      },
+    },
+    docsContent: {
+      [theme.breakpoints.up('md')]: {
+        marginLeft: theme.docsDrawerWidth,
+        width: `calc(100% - ${theme.docsDrawerWidth}px)`,
       },
     },
     appBarButton: {
@@ -127,6 +152,7 @@ export default class Dashboard extends Component {
     disablePadding: false,
     search: null,
     helpView: null,
+    docs: false,
   };
 
   static propTypes = {
@@ -153,12 +179,21 @@ export default class Dashboard extends Component {
      * be shown every time.
      */
     helpView: node,
+    /**
+     * If true, the documentation table of content will be displayed.
+     */
+    docs: bool,
   };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
 
   state = {
     mobileOpen: false,
     showHelpView: false,
     error: null,
+    showLogo: false,
   };
 
   handleDrawerToggle = () => {
@@ -169,11 +204,9 @@ export default class Dashboard extends Component {
     this.setState({ showHelpView: !this.state.showHelpView });
   };
 
-  componentDidCatch(error, errorInfo) {
-    this.setState({ error });
-
-    reportError(error, errorInfo);
-  }
+  handleTitleToggle = () => {
+    this.setState({ showLogo: !this.state.showLogo });
+  };
 
   render() {
     const {
@@ -186,9 +219,12 @@ export default class Dashboard extends Component {
       search,
       helpView,
       onToggleTheme,
+      docs,
+      history,
+      staticContext: _,
       ...props
     } = this.props;
-    const { error, mobileOpen, showHelpView } = this.state;
+    const { error, mobileOpen, showHelpView, showLogo } = this.state;
     const drawer = (
       <div>
         <div className={classes.toolbar}>
@@ -196,38 +232,51 @@ export default class Dashboard extends Component {
             color="inherit"
             aria-label="close drawer"
             onClick={this.handleDrawerToggle}
-            className={classes.navIconHide}
-          >
+            className={classes.navIconHide}>
             <MenuIcon />
           </IconButton>
           <Typography
+            onMouseEnter={this.handleTitleToggle}
+            onMouseLeave={this.handleTitleToggle}
             component={Link}
             to="/"
             variant="h6"
             noWrap
-            className={classes.title}
-          >
-            {process.env.APPLICATION_NAME}
+            className={classes.title}>
+            {showLogo ? (
+              <img
+                className={classes.logoStyle}
+                height={30}
+                alt="logo"
+                src={Logo}
+              />
+            ) : (
+              process.env.APPLICATION_NAME
+            )}
           </Typography>
         </div>
         <Divider />
         <UserMenu />
         <Divider />
-        <SidebarList />
+        {docs ? <DocsSidebarList /> : <SidebarList />}
       </div>
     );
+    const isDocs = history.location.pathname.startsWith(DOCS_PATH_PREFIX);
 
     return (
       <div className={classes.root}>
+        <Helmet />
         <PageTitle>{title}</PageTitle>
-        <AppBar className={classes.appBar}>
+        <AppBar
+          className={classNames(classes.appBar, {
+            [classes.docsAppBar]: isDocs,
+          })}>
           <Toolbar>
             <IconButton
               color="inherit"
               aria-label="open drawer"
               onClick={this.handleDrawerToggle}
-              className={classes.navIconHide}
-            >
+              className={classes.navIconHide}>
               <MenuIcon className={classes.appIcon} />
             </IconButton>
             <Typography variant="h6" noWrap className={classes.appBarTitle}>
@@ -237,8 +286,7 @@ export default class Dashboard extends Component {
             <Tooltip placement="bottom" title="Toggle light/dark theme">
               <IconButton
                 className={classes.appBarButton}
-                onClick={onToggleTheme}
-              >
+                onClick={onToggleTheme}>
                 {theme.palette.type === 'dark' ? (
                   <LightBulbOn className={classes.appIcon} />
                 ) : (
@@ -246,12 +294,19 @@ export default class Dashboard extends Component {
                 )}
               </IconButton>
             </Tooltip>
+            <Tooltip placement="bottom" title="Documentation">
+              <IconButton
+                className={classes.appBarButton}
+                component={Link}
+                to={DOCS_PATH_PREFIX}>
+                <BookOpenPageVariantIcon className={classes.appIcon} />
+              </IconButton>
+            </Tooltip>
             {helpView && (
               <Tooltip placement="bottom" title="Page Information">
                 <IconButton
                   onClick={this.handleHelpViewToggle}
-                  className={classes.appBarButton}
-                >
+                  className={classes.appBarButton}>
                   <HelpIcon className={classes.appIcon} />
                 </IconButton>
               </Tooltip>
@@ -265,12 +320,13 @@ export default class Dashboard extends Component {
             open={mobileOpen}
             onClose={this.handleDrawerToggle}
             classes={{
-              paper: classes.drawerPaper,
+              paper: classNames(classes.drawerPaper, {
+                [classes.docsDrawerPaper]: isDocs,
+              }),
             }}
             ModalProps={{
               keepMounted: true,
-            }}
-          >
+            }}>
             {drawer}
           </Drawer>
         </Hidden>
@@ -282,9 +338,10 @@ export default class Dashboard extends Component {
               elevation: 2,
             }}
             classes={{
-              paper: classes.drawerPaper,
-            }}
-          >
+              paper: classNames(classes.drawerPaper, {
+                [classes.docsDrawerPaper]: isDocs,
+              }),
+            }}>
             {drawer}
           </Drawer>
         </Hidden>
@@ -298,13 +355,11 @@ export default class Dashboard extends Component {
           }}
           ModalProps={{
             keepMounted: true,
-          }}
-        >
+          }}>
           <Fragment>
             <IconButton
               onClick={this.handleHelpViewToggle}
-              className={classes.helpCloseIcon}
-            >
+              className={classes.helpCloseIcon}>
               <CloseIcon />
             </IconButton>
             {helpView}
@@ -315,11 +370,11 @@ export default class Dashboard extends Component {
             classes.content,
             {
               [classes.contentPadding]: !disablePadding,
+              [classes.docsContent]: isDocs,
             },
             className
           )}
-          {...props}
-        >
+          {...props}>
           {error ? <ErrorPanel error={error} /> : children}
         </main>
       </div>

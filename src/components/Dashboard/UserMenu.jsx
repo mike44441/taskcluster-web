@@ -34,6 +34,11 @@ import SignInDialog from '../SignInDialog';
   leftIcon: {
     marginRight: theme.spacing.unit,
   },
+  username: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+  },
 }))
 @withAuth
 @withApollo
@@ -46,6 +51,9 @@ export default class UserMenu extends Component {
   handleClickSignOut = () => {
     this.handleMenuClose();
     this.props.onUnauthorize();
+    // Since Apollo caches query results, it’s important to get rid of them
+    // when the login state changes.
+    this.props.client.clearStore();
   };
 
   handleMenuClick = e => {
@@ -58,17 +66,6 @@ export default class UserMenu extends Component {
 
   handleSignInDialogClose = () => {
     this.setState({ signInDialogOpen: false });
-  };
-
-  handleClickSignOut = async () => {
-    this.handleMenuClose();
-    // Since Apollo caches query results, it’s important to get rid of them
-    // when the login state changes.
-    await this.props.client.resetStore();
-    this.props.onUnauthorize();
-    // Since Apollo caches query results, it’s important to get rid of them
-    // when the login state changes.
-    this.props.client.resetStore();
   };
 
   handleSignInDialogOpen = () => {
@@ -87,8 +84,7 @@ export default class UserMenu extends Component {
             aria-haspopup="true"
             aria-controls="user-menu"
             aria-label="user menu"
-            onClick={this.handleSignInDialogOpen}
-          >
+            onClick={this.handleSignInDialogOpen}>
             <ListItemIcon className={classes.icon}>
               <AccountCircleIcon />
             </ListItemIcon>
@@ -118,8 +114,7 @@ export default class UserMenu extends Component {
             aria-haspopup="true"
             aria-controls="user-menu"
             aria-label="user menu"
-            onClick={this.handleMenuClick}
-          >
+            onClick={this.handleMenuClick}>
             {profile.photos && profile.photos.length ? (
               <Avatar alt={profile.displayName} src={profile.photos[0].value} />
             ) : (
@@ -127,23 +122,25 @@ export default class UserMenu extends Component {
                 {profile.displayName[0]}
               </Avatar>
             )}
-            <ListItemText primary={profile.displayName} />
+            <ListItemText
+              primary={profile.displayName}
+              primaryTypographyProps={{ className: classes.username }}
+              title={profile.displayName}
+            />
           </ListItem>
         </List>
         <Menu
           id="user-menu"
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
-          onClose={this.handleMenuClose}
-        >
+          onClose={this.handleMenuClose}>
           <MenuItem title="Your Profile" component={Link} to="/profile">
             <AccountIcon className={classes.leftIcon} />
             Account
           </MenuItem>
           <MenuItem
             title={`Sign Out of ${process.env.APPLICATION_NAME}`}
-            onClick={this.handleClickSignOut}
-          >
+            onClick={this.handleClickSignOut}>
             <HandPeaceIcon className={classes.leftIcon} />
             Sign Out
           </MenuItem>

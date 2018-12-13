@@ -1,7 +1,6 @@
 import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql } from 'react-apollo';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import PlusIcon from 'mdi-react/PlusIcon';
@@ -13,6 +12,7 @@ import SpeedDial from '../../../components/SpeedDial';
 import SpeedDialAction from '../../../components/SpeedDialAction';
 import HelpView from '../../../components/HelpView';
 import AwsProvisionerWorkerTypeTable from '../../../components/AwsProvisionerWorkerTypeTable';
+import ErrorPanel from '../../../components/ErrorPanel';
 import workerTypesQuery from './workerTypes.graphql';
 
 @hot(module)
@@ -42,8 +42,8 @@ export default class ViewRoles extends Component {
     this.props.history.push('/aws-provisioner/recent-errors');
   };
 
-  handleWorkerTypeSearchChange = ({ target }) => {
-    this.setState({ workerTypeSearch: target.value });
+  handleWorkerTypeSearchSubmit = workerTypeSearch => {
+    this.setState({ workerTypeSearch });
   };
 
   render() {
@@ -61,15 +61,13 @@ export default class ViewRoles extends Component {
         search={
           <Search
             disabled={loading}
-            value={workerTypeSearch}
-            onChange={this.handleWorkerTypeSearchChange}
-            placeholder="Worker type starts with"
+            onSubmit={this.handleWorkerTypeSearchSubmit}
+            placeholder="Worker type contains"
           />
-        }
-      >
+        }>
         <Fragment>
           {!awsProvisionerWorkerTypeSummaries && loading && <Spinner loading />}
-          {error && error.graphQLErrors && <ErrorPanel error={error} />}
+          <ErrorPanel error={error} />
           {awsProvisionerWorkerTypeSummaries && (
             <AwsProvisionerWorkerTypeTable
               searchTerm={workerTypeSearch}
@@ -82,23 +80,20 @@ export default class ViewRoles extends Component {
               icon={<PlusIcon />}
               tooltipTitle="Create Worker Type"
               onClick={this.handleCreate}
-              ButtonProps={{ color: 'secondary' }}
             />
             <SpeedDialAction
               tooltipOpen
               icon={<AlertCircleOutlineIcon />}
-              tooltipTitle="Recent Errors"
-              classes={{ button: classes.alertIcon }}
+              tooltipTitle="Recent Provisioning Errors"
+              className={classes.alertIcon}
               onClick={this.handleRecentErrorsClick}
-              ButtonProps={{ color: 'secondary' }}
             />
             <SpeedDialAction
               tooltipOpen
               icon={<HeartPulseIcon />}
               tooltipTitle="Health"
-              classes={{ button: classes.heartIcon }}
+              className={classes.heartIcon}
               onClick={this.handleHealthClick}
-              ButtonProps={{ color: 'secondary' }}
             />
           </SpeedDial>
         </Fragment>

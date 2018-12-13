@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { string, bool, func, oneOfType, object } from 'prop-types';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
 import Code from '@mozilla-frontend-infra/components/Code';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -32,6 +31,7 @@ import DateDistance from '../DateDistance';
 import { HOOKS_LAST_FIRE_TYPE } from '../../utils/constants';
 import { hook } from '../../utils/prop-types';
 import removeKeys from '../../utils/removeKeys';
+import ErrorPanel from '../ErrorPanel';
 
 const initialHook = {
   metadata: {
@@ -324,17 +324,9 @@ export default class HookForm extends Component {
   };
 
   validHook = () => {
-    const {
-      name,
-      description,
-      owner,
-      taskValidJson,
-      triggerSchemaValidJson,
-    } = this.state;
+    const { name, owner, taskValidJson, triggerSchemaValidJson } = this.state;
 
-    return (
-      name && description && owner && taskValidJson && triggerSchemaValidJson
-    );
+    return name && owner && taskValidJson && triggerSchemaValidJson;
   };
 
   render() {
@@ -358,7 +350,7 @@ export default class HookForm extends Component {
 
     return (
       <Fragment>
-        {error && !dialogOpen && <ErrorPanel error={error} />}
+        {!dialogOpen && <ErrorPanel error={error} />}
         <List>
           {isNewHook && (
             <Fragment>
@@ -461,8 +453,7 @@ export default class HookForm extends Component {
                 />
                 <IconButton
                   onClick={this.handleRefreshHookStatus}
-                  className={classes.iconButton}
-                >
+                  className={classes.iconButton}>
                   <RefreshIcon />
                 </IconButton>
               </ListItem>
@@ -471,8 +462,7 @@ export default class HookForm extends Component {
                   button
                   component={Link}
                   className={classes.listItemButton}
-                  to={`/tasks/${hook.status.lastFire.taskId}`}
-                >
+                  to={`/tasks/${hook.status.lastFire.taskId}`}>
                   <ListItemText
                     primary="Last Fired Result"
                     secondary={hook.status.lastFire.taskId}
@@ -524,8 +514,7 @@ export default class HookForm extends Component {
               />
               <IconButton
                 className={classes.iconButton}
-                onClick={this.handleNewCronJob}
-              >
+                onClick={this.handleNewCronJob}>
                 <PlusIcon />
               </IconButton>
             </ListItem>
@@ -535,8 +524,7 @@ export default class HookForm extends Component {
                 <IconButton
                   className={classes.iconButton}
                   name={cronJob}
-                  onClick={this.handleDeleteCronJob}
-                >
+                  onClick={this.handleDeleteCronJob}>
                   <DeleteIcon />
                 </IconButton>
               </ListItem>
@@ -550,8 +538,7 @@ export default class HookForm extends Component {
                   <a
                     href="https://taskcluster.github.io/json-e/"
                     target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                    rel="noopener noreferrer">
                     JSON-e
                   </a>{' '}
                   to create the the task definition. See{' '}
@@ -562,8 +549,7 @@ export default class HookForm extends Component {
                       href={docs(
                         `https://${process.env.TASKCLUSTER_ROOT_URL}`,
                         'reference/core/taskcluster-hooks/docs/firing-hooks'
-                      )}
-                    >
+                      )}>
                       {'"'}
                       firing hooks
                       {'"'}
@@ -600,8 +586,7 @@ export default class HookForm extends Component {
                 classes={{ root: classes.successIcon }}
                 variant="fab"
                 disabled={!this.validHook() || actionLoading}
-                onClick={this.handleCreateHook}
-              >
+                onClick={this.handleCreateHook}>
                 <ContentSaveIcon />
               </Button>
             </div>
@@ -615,7 +600,6 @@ export default class HookForm extends Component {
               onClick={this.handleUpdateHook}
               tooltipTitle="Save Hook"
               ButtonProps={{
-                color: 'secondary',
                 disabled: !this.validHook() || actionLoading,
               }}
             />
@@ -624,7 +608,7 @@ export default class HookForm extends Component {
               tooltipOpen
               icon={<DeleteIcon />}
               onClick={this.handleDeleteHook}
-              classes={{ button: classes.deleteIcon }}
+              className={classes.deleteIcon}
               ButtonProps={{
                 disabled: actionLoading,
               }}
@@ -635,7 +619,7 @@ export default class HookForm extends Component {
               tooltipOpen
               icon={<FlashIcon />}
               onClick={this.handleTriggerHookClick}
-              classes={{ button: classes.successIcon }}
+              className={classes.successIcon}
               ButtonProps={{
                 disabled: !this.validHook() || actionLoading,
               }}
@@ -653,7 +637,7 @@ export default class HookForm extends Component {
             confirmText="Trigger Hook"
             body={
               <Fragment>
-                {error && dialogOpen && <ErrorPanel error={error} />}
+                {dialogOpen && <ErrorPanel error={error} />}
                 <Typography gutterBottom>
                   Trigger Hook{' '}
                   <code>

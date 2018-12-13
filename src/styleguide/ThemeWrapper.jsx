@@ -8,8 +8,8 @@ export default class ThemeWrapper extends Component {
     error: null,
   };
 
-  componentDidCatch(error) {
-    this.setState({ error });
+  static getDerivedStateFromError(error) {
+    return { error };
   }
 
   render() {

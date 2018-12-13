@@ -2,7 +2,6 @@ import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { withApollo } from 'react-apollo';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
@@ -26,6 +25,7 @@ import Dashboard from '../../components/Dashboard';
 import Button from '../../components/Button';
 import HelpView from '../../components/HelpView';
 import urls from '../../utils/urls';
+import ErrorPanel from '../../components/ErrorPanel';
 import githubQuery from './github.graphql';
 
 const initialYaml = {
@@ -53,6 +53,15 @@ const initialYaml = {
       },
     },
   ],
+};
+const initialState = {
+  events: new Set([
+    'pull_request.opened',
+    'pull_request.reopened',
+    'pull_request.synchronize',
+  ]),
+  taskName: '',
+  taskDescription: '',
 };
 const baseCmd = [
   'git clone {{event.head.repo.url}} repo',
@@ -127,7 +136,7 @@ const cmdDirectory = (type, org = '<YOUR_ORG>', repo = '<YOUR_REPO>') =>
 }))
 export default class QuickStart extends Component {
   state = {
-    ...this.initialState,
+    ...initialState,
     owner: '',
     repo: '',
     access: 'collaborators',
@@ -150,16 +159,6 @@ export default class QuickStart extends Component {
       installedState: data.githubRepository.installed ? 'success' : 'error',
     });
   }, 1000);
-
-  initialState = {
-    events: new Set([
-      'pull_request.opened',
-      'pull_request.reopened',
-      'pull_request.synchronize',
-    ]),
-    taskName: '',
-    taskDescription: '',
-  };
 
   handleEditorChange = editorValue => {
     this.setState({
@@ -205,7 +204,7 @@ export default class QuickStart extends Component {
   };
 
   handleReset = () => {
-    this.setState(this.initialState);
+    this.setState(initialState);
   };
 
   renderEditor() {
@@ -265,8 +264,7 @@ export default class QuickStart extends Component {
         helpView={
           <HelpView
             description="Create a configuration file and
-                plug the CI into your repository."
-          >
+                plug the CI into your repository.">
             <Fragment>
               <Typography paragraph>
                 This tool lets you easily generate a simple generic{' '}
@@ -297,8 +295,7 @@ export default class QuickStart extends Component {
                     <a
                       href="https://github.com/apps/taskcluster"
                       target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                      rel="noopener noreferrer">
                       Taskcluster-GitHub integration
                     </a>
                     .
@@ -314,16 +311,14 @@ export default class QuickStart extends Component {
                     'reference/integrations/taskcluster-github/docs/taskcluster-yml-v0'
                   )}
                   target="_blank"
-                  rel="noopener noreferrer"
-                >
+                  rel="noopener noreferrer">
                   full documentation on our configuration files
                 </a>
                 .
               </Typography>
             </Fragment>
           </HelpView>
-        }
-      >
+        }>
         <Fragment>
           <div className={classes.orgRepo}>
             <TextField
@@ -458,8 +453,7 @@ export default class QuickStart extends Component {
                 value={access}
                 name="access"
                 onChange={this.handleInputChange}
-                margin="normal"
-              >
+                margin="normal">
                 <MenuItem value="public">Public</MenuItem>
                 <MenuItem value="collaborators">Collaborators</MenuItem>
               </TextField>
@@ -473,8 +467,7 @@ export default class QuickStart extends Component {
                 value={image}
                 name="image"
                 onChange={this.handleInputChange}
-                margin="normal"
-              >
+                margin="normal">
                 <MenuItem value="node">Node.js</MenuItem>
                 <MenuItem value="python">Python</MenuItem>
                 <MenuItem value="rust">Rust</MenuItem>
@@ -488,8 +481,7 @@ export default class QuickStart extends Component {
                 label="Commands"
                 value={commandSelection}
                 onChange={this.handleCommandsChange}
-                margin="normal"
-              >
+                margin="normal">
                 <MenuItem value="standard">
                   Clone repo and run my tests
                 </MenuItem>
@@ -504,8 +496,7 @@ export default class QuickStart extends Component {
               variant="fab"
               onClick={this.handleReset}
               color="secondary"
-              className={classes.resetButton}
-            >
+              className={classes.resetButton}>
               <RestartIcon />
             </Button>
           </Tooltip>

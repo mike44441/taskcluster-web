@@ -19,12 +19,12 @@ const FOLLOW_STORAGE_KEY = 'follow-log';
 @withStyles(theme => ({
   '@global': {
     'div.react-lazylog': {
-      backgroundColor: `${theme.palette.primary.dark}`,
+      backgroundColor: theme.palette.background.default,
       fontFamily: 'Consolas, Monaco, Andale Mono, Ubuntu Mono, monospace',
       fontSize: 13,
       paddingTop: 4,
       paddingBottom: theme.spacing.unit,
-      color: 'rgba(255, 255, 255, 0.7)',
+      color: theme.palette.text.secondary,
       '-webkit-font-smoothing': 'auto',
     },
   },
@@ -40,7 +40,7 @@ const FOLLOW_STORAGE_KEY = 'follow-log';
       color: `${theme.palette.text.primary} !important`,
     },
     '&$highlight > a': {
-      color: theme.palette.common.white,
+      color: theme.palette.text.primary,
     },
     '&:hover': {
       backgroundColor: `${theme.palette.action.hover} !important`,
@@ -51,6 +51,9 @@ const FOLLOW_STORAGE_KEY = 'follow-log';
     '&:hover': {
       backgroundColor: theme.palette.success.dark,
     },
+  },
+  fabIcon: {
+    ...theme.mixins.fabIcon,
   },
 }))
 /**
@@ -188,7 +191,10 @@ export default class Log extends Component {
       actions,
       GoToLineButtonProps,
       FollowLogButtonProps,
-      RawLogButtonProps,
+      RawLogButtonProps: {
+        className: RawLogButtonClassName,
+        ...RawLogButtonPropsRest
+      },
       ...props
     } = this.props;
     const highlight = this.getHighlightFromHash();
@@ -203,8 +209,8 @@ export default class Log extends Component {
           variant="fab"
           mini
           color="secondary"
-          {...RawLogButtonProps}
-        >
+          className={classNames(classes.fabIcon, RawLogButtonClassName)}
+          {...RawLogButtonPropsRest}>
           <OpenInNewIcon />
         </Button>
       </Tooltip>
@@ -223,11 +229,11 @@ export default class Log extends Component {
             lineClassName={classes.line}
             highlightLineClassName={classes.highlight}
             loadingComponent={Loading}
+            extraLines={1}
             {...props}
           />
           {rawLogButton}
           <GoToLineButton
-            className={classes.lineNumberButton}
             onLineNumberChange={this.handleLineNumberChange}
             {...GoToLineButtonProps}
           />
@@ -254,18 +260,17 @@ export default class Log extends Component {
               lineClassName={classes.line}
               highlightLineClassName={classes.highlight}
               loadingComponent={Loading}
+              extraLines={1}
               {...props}
             />
             {rawLogButton}
             <GoToLineButton
-              className={classes.lineNumberButton}
               onLineNumberChange={this.handleLineNumberChange}
               {...GoToLineButtonProps}
             />
             <Tooltip
               placement="bottom"
-              title={follow ? 'Unfollow log' : 'Follow log'}
-            >
+              title={follow ? 'Unfollow log' : 'Follow log'}>
               <Button
                 variant="fab"
                 mini
@@ -277,8 +282,7 @@ export default class Log extends Component {
                     [classes.followButtonFollowing]: follow,
                   },
                   FollowLogButtonProps && FollowLogButtonProps.className
-                )}
-              >
+                )}>
                 <ArrowDownBoldCircleOutlineIcon />
               </Button>
             </Tooltip>

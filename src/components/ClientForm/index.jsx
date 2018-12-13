@@ -311,8 +311,7 @@ export default class ClientForm extends Component {
                           button
                           component={Link}
                           to={`/auth/scopes/${encodeURIComponent(scope)}`}
-                          className={classes.listItemButton}
-                        >
+                          className={classes.listItemButton}>
                           <ListItemText secondary={<code>{scope}</code>} />
                           <LinkIcon />
                         </ListItem>
@@ -332,8 +331,7 @@ export default class ClientForm extends Component {
                 disabled={loading}
                 variant="fab"
                 onClick={this.handleSaveClient}
-                classes={{ root: classes.saveIcon }}
-              >
+                classes={{ root: classes.saveIcon }}>
                 <ContentSaveIcon />
               </Button>
             </div>
@@ -345,7 +343,7 @@ export default class ClientForm extends Component {
               tooltipOpen
               icon={<ContentSaveIcon className={classes.saveIcon} />}
               onClick={this.handleSaveClient}
-              classes={{ button: classes.saveIcon }}
+              className={classes.saveIcon}
               tooltipTitle="Save"
               ButtonProps={{ disabled: loading }}
             />
@@ -354,7 +352,7 @@ export default class ClientForm extends Component {
               tooltipOpen
               icon={<DeleteIcon />}
               onClick={this.handleDeleteClient}
-              classes={{ button: classes.deleteIcon }}
+              className={classes.deleteIcon}
               tooltipTitle="Delete"
               ButtonProps={{ disabled: loading }}
             />
@@ -379,7 +377,6 @@ export default class ClientForm extends Component {
               onClick={this.handleResetAccessToken}
               tooltipTitle="Reset Access Token"
               ButtonProps={{
-                color: 'secondary',
                 disabled: loading,
               }}
             />

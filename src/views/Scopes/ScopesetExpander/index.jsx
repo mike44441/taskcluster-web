@@ -3,7 +3,6 @@ import React, { Component, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Query } from 'react-apollo';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import { withStyles } from '@material-ui/core/styles';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -12,10 +11,11 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import ArrowExpandVerticalIcon from 'mdi-react/ArrowExpandVerticalIcon';
 import LinkIcon from 'mdi-react/LinkIcon';
-import HelpView from '../../components/HelpView';
-import Dashboard from '../../components/Dashboard/index';
-import Button from '../../components/Button';
-import splitLines from '../../utils/splitLines';
+import HelpView from '../../../components/HelpView';
+import Dashboard from '../../../components/Dashboard/index';
+import Button from '../../../components/Button';
+import ErrorPanel from '../../../components/ErrorPanel';
+import splitLines from '../../../utils/splitLines';
 import scopesetQuery from './scopeset.graphql';
 
 @hot(module)
@@ -31,6 +31,8 @@ import scopesetQuery from './scopeset.graphql';
   },
   listItemButton: {
     ...theme.mixins.listItemButton,
+    paddingTop: theme.spacing.unit / 2,
+    paddingBottom: theme.spacing.unit / 2,
   },
 }))
 export default class ScopesetExpander extends Component {
@@ -57,8 +59,7 @@ export default class ScopesetExpander extends Component {
     return (
       <Dashboard
         title="Expand Scopesets"
-        helpView={<HelpView description={description} />}
-      >
+        helpView={<HelpView description={description} />}>
         <Fragment>
           <CodeEditor
             className={classes.editor}
@@ -76,12 +77,9 @@ export default class ScopesetExpander extends Component {
                       <Spinner />
                     </ListItem>
                   )}
-                  {error &&
-                    error.graphQLErrors && (
-                      <ListItem>
-                        <ErrorPanel error={error} />
-                      </ListItem>
-                    )}
+                  <ListItem>
+                    <ErrorPanel error={error} />
+                  </ListItem>
                   {expandScopes &&
                     expandScopes.map(scope => (
                       <ListItem
@@ -89,9 +87,8 @@ export default class ScopesetExpander extends Component {
                         button
                         component={Link}
                         to={`/auth/scopes/${encodeURIComponent(scope)}`}
-                        className={classes.listItemButton}
-                      >
-                        <ListItemText secondary={<code>{scope}</code>} />
+                        className={classes.listItemButton}>
+                        <ListItemText secondary={scope} />
                         <LinkIcon size={16} />
                       </ListItem>
                     ))}
@@ -104,8 +101,7 @@ export default class ScopesetExpander extends Component {
               <Button
                 color="secondary"
                 variant="fab"
-                onClick={this.handleExpandScopesClick}
-              >
+                onClick={this.handleExpandScopesClick}>
                 <ArrowExpandVerticalIcon />
               </Button>
             </div>

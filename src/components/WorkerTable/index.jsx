@@ -114,14 +114,13 @@ export default class WorkerTable extends Component {
               <TableCellListItem
                 button
                 component={Link}
-                to={`/tasks/${task.taskId}/runs/${task.runId}`}
-              >
+                to={`/tasks/${task.taskId}/runs/${task.runId}`}>
                 <div className={classes.taskName}>{task.name}</div>
                 <LinkIcon size={iconSize} />
               </TableCellListItem>
             </TableCell>
             <TableCell>{task.taskId}</TableCell>
-            <CopyToClipboard text={task.started}>
+            <CopyToClipboard title={task.started} text={task.started}>
               <TableCell>
                 <TableCellListItem button>
                   <ListItemText
@@ -136,7 +135,7 @@ export default class WorkerTable extends Component {
                 </TableCellListItem>
               </TableCell>
             </CopyToClipboard>
-            <CopyToClipboard text={task.resolved}>
+            <CopyToClipboard title={task.resolved} text={task.resolved}>
               <TableCell>
                 {task.resolved ? (
                   <TableCellListItem button>

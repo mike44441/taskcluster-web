@@ -105,11 +105,10 @@ export default class IndexedEntry extends Component {
               [classes.pointer]: Boolean(artifact.url),
             })}
             onClick={() => this.handleArtifactClick(artifact.url)}
-            hover={Boolean(artifact.url)}
-          >
+            hover={Boolean(artifact.url)}>
             <TableCell>
-              {artifact.isPublicLog && <LockOpenOutlineIcon />}
-              {!artifact.isPublicLog && artifact.url && <LockIcon />}
+              {artifact.isPublic && <LockOpenOutlineIcon />}
+              {!artifact.isPublic && artifact.url && <LockIcon />}
               {artifact.icon && <artifact.icon />}
             </TableCell>
             <TableCell>
@@ -145,8 +144,7 @@ export default class IndexedEntry extends Component {
           button
           className={classes.listItemButton}
           component={Link}
-          to={`/tasks/${indexedTask.taskId}`}
-        >
+          to={`/tasks/${indexedTask.taskId}`}>
           <ListItemText primary="View task" />
           <LinkIcon />
         </ListItem>

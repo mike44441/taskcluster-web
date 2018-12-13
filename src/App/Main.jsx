@@ -1,10 +1,10 @@
-import React, { Component, Fragment } from 'react';
 import { BrowserRouter, Switch } from 'react-router-dom';
+import React, { Component, Fragment } from 'react';
 import { object } from 'prop-types';
-import ErrorPanel from '@mozilla-frontend-infra/components/ErrorPanel';
 import { withStyles } from '@material-ui/core/styles';
 import RouteWithProps from '../components/RouteWithProps';
 import routes from './routes';
+import ErrorPanel from '../components/ErrorPanel';
 
 @withStyles(theme => ({
   '@global': {
@@ -39,6 +39,7 @@ import routes from './routes';
     },
     'pre, :not(pre) > code': {
       ...theme.mixins.highlight,
+      fontSize: theme.typography.body2.fontSize,
     },
     '.json-inspector__leaf': {
       '&.json-inspector__leaf_root': {
@@ -138,7 +139,7 @@ export default class Main extends Component {
 
     return (
       <Fragment>
-        {error && <ErrorPanel error={error} />}
+        <ErrorPanel error={error} />
         <BrowserRouter>
           <Switch>
             {routes.map(props => (
